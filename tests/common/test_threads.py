@@ -14,7 +14,7 @@
 
 import threading
 
-from playwright import sync_playwright
+from playwright.sync_api import sync_playwright
 
 
 def test_running_in_thread(browser_name):
@@ -25,7 +25,7 @@ def test_running_in_thread(browser_name):
             with sync_playwright() as playwright:
                 browser = getattr(playwright, browser_name).launch()
                 # This should not throw ^^.
-                browser.newPage()
+                browser.new_page()
                 browser.close()
                 result.append("Success")
 

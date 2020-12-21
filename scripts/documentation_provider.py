@@ -27,6 +27,8 @@ from typing import (  # type: ignore
     get_type_hints,
 )
 
+from playwright._impl._helper import to_snake_case
+
 enum_regex = r"^\"[^\"]+\"(?:\|\"[^\"]+\")+$"
 union_regex = r"^[^\|]+(?:\|[^\|]+)+$"
 
@@ -57,6 +59,7 @@ class DocumentationProvider:
         )
         self.api = json.loads(process_output.stdout)
         self.errors: Set[str] = set()
+        self._patch_descriptions()
 
     method_name_rewrites: Dict[str, str] = {
         "continue_": "continue",
@@ -65,6 +68,36 @@ class DocumentationProvider:
         "querySelector": "$",
         "querySelectorAll": "$$",
     }
+
+    def _patch_descriptions(self) -> None:
+        map: Dict[str, str] = {}
+        for class_name in self.api:
+            clazz = self.api[class_name]
+            js_class = ""
+            if class_name.startswith("JS"):
+                js_class = "jsHandle"
+            if class_name.startswith("CDP"):
+                js_class = "cdpSession"
+            else:
+                js_class = class_name[0:1].lower() + class_name[1:]
+            for method_name in clazz["methods"]:
+                camel_case = js_class + "." + method_name
+                snake_case = (
+                    to_snake_case(class_name) + "." + to_snake_case(method_name)
+                )
+                map[camel_case] = snake_case
+
+        for [name, value] in map.items():
+            for class_name in self.api:
+                clazz = self.api[class_name]
+                for method_name in clazz["methods"]:
+                    method = clazz["methods"][method_name]
+                    if "comment" in method:
+                        method["comment"] = method["comment"].replace(name, value)
+                    if "args" in method:
+                        for _, arg in method["args"].items():
+                            if "comment" in arg:
+                                arg["comment"] = arg["comment"].replace(name, value)
 
     def print_entry(
         self, class_name: str, method_name: str, signature: Dict[str, Any] = None
@@ -86,7 +119,7 @@ class DocumentationProvider:
         method = (
             clazz["methods"].get(method_name)
             or clazz["properties"].get(method_name)
-            or super_clazz["methods"].get(method_name)
+            or (super_clazz and super_clazz["methods"].get(method_name))
         )
         fqname = f"{class_name}.{method_name}"
 
@@ -95,7 +128,7 @@ class DocumentationProvider:
             return
 
         indent = " " * 8
-        print(f'{indent}"""{class_name}.{original_method_name}')
+        print(f'{indent}"""{class_name}.{to_snake_case(original_method_name)}')
         if method.get("comment"):
             print(f"{indent}{self.beautify_method_comment(method['comment'], indent)}")
         signature_no_return = {**signature} if signature else None
@@ -123,9 +156,19 @@ class DocumentationProvider:
                 expand = True
             if fqname == "Page.setViewportSize" and name == "viewportSize":
                 expand = True
+            if fqname == "BrowserContext.setGeolocation" and name == "geolocation":
+                expand = True
             if expand:
                 for opt_name, opt_value in args[name]["type"]["properties"].items():
-                    args_with_expanded_options[opt_name] = opt_value
+                    if opt_name == "recordHar" or opt_name == "recordVideo":
+                        for sub_name, sub_value in opt_value["type"][
+                            "properties"
+                        ].items():
+                            args_with_expanded_options[
+                                opt_name + sub_name[0:1].upper() + sub_name[1:]
+                            ] = sub_value
+                    else:
+                        args_with_expanded_options[opt_name] = opt_value
             else:
                 args_with_expanded_options[name] = value
 
@@ -148,7 +191,7 @@ class DocumentationProvider:
                 else:
                     code_type = self.serialize_python_type(value)
 
-                    print(f"{indent}{original_name} : {code_type}")
+                    print(f"{indent}{to_snake_case(original_name)} : {code_type}")
                     if doc_value.get("comment"):
                         print(
                             f"{indent}    {self.indent_paragraph(doc_value['comment'], f'{indent}    ')}"
@@ -243,13 +286,26 @@ class DocumentationProvider:
         str_value = str(value)
         if isinstance(value, list):
             return f"[{', '.join(list(map(lambda a: self.serialize_python_type(a), value)))}]"
-        if str_value == "<class 'playwright._types.Error'>":
+        if str_value == "<class 'playwright._impl._types.Error'>":
             return "Error"
         match = re.match(r"^<class '((?:pathlib\.)?\w+)'>$", str_value)
         if match:
             return match.group(1)
-        match = re.match(r"^<class 'playwright\.[\w_]+\.([\w]+)'>$", str_value)
-        if match and "_types" not in str_value:
+        match = re.match(r"^<class 'playwright\._impl\.[\w_]+\.([\w]+)'>$", str_value)
+        if match and "_api_structures" not in str_value:
+            if match.group(1) == "FilePayload":
+                return "Dict"
+            if match.group(1) == "FloatRect":
+                return '{"x": float, "y": float, "width": float, "height": float}'
+            if match.group(1) == "Geolocation":
+                return '{"latitude": float, "longitude": float, "accuracy": Optional[float]}'
+            if match.group(1) == "PdfMargins":
+                return '{"top": Union[str, int, NoneType], "right": Union[str, int, NoneType], "bottom": Union[str, int, NoneType], "left": Union[str, int, NoneType]}'
+            if match.group(1) == "ProxySettings":
+                return '{"server": str, "bypass": Optional[str], "username": Optional[str], "password": Optional[str]}'
+            if match.group(1) == "SourceLocation":
+                return '{"url": str, "lineNumber": int, "columnNumber": int}'
+
             return match.group(1)
 
         match = re.match(r"^typing\.(\w+)$", str_value)
@@ -325,6 +381,8 @@ class DocumentationProvider:
             if "screenshot(clip=)" in fqname:
                 return "float"
             if fqname == "Page.pdf(width=)" or fqname == "Page.pdf(height=)":
+                return "float"
+            if fqname.startswith("BrowserContext.setGeolocation"):
                 return "float"
             return "int"
 

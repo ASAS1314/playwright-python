@@ -14,7 +14,7 @@
 
 import pytest
 
-from playwright import async_playwright
+from playwright.async_api import async_playwright
 
 
 # Will mark all the tests as async
@@ -56,14 +56,14 @@ async def browser(browser_factory):
 
 @pytest.fixture
 async def context(browser):
-    context = await browser.newContext()
+    context = await browser.new_context()
     yield context
     await context.close()
 
 
 @pytest.fixture
 async def page(context):
-    page = await context.newPage()
+    page = await context.new_page()
     yield page
     await page.close()
 

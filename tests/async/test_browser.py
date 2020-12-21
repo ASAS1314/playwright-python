@@ -16,15 +16,14 @@ import re
 
 import pytest
 
-from playwright import Error
-from playwright.async_api import Browser
+from playwright.async_api import Browser, Error
 
 
 async def test_should_create_new_page(browser):
-    page1 = await browser.newPage()
+    page1 = await browser.new_page()
     assert len(browser.contexts) == 1
 
-    page2 = await browser.newPage()
+    page2 = await browser.new_page()
     assert len(browser.contexts) == 2
 
     await page1.close()
@@ -35,9 +34,9 @@ async def test_should_create_new_page(browser):
 
 
 async def test_should_throw_upon_second_create_new_page(browser):
-    page = await browser.newPage()
+    page = await browser.new_page()
     with pytest.raises(Error) as exc:
-        await page.context.newPage()
+        await page.context.new_page()
     await page.close()
     assert "Please use browser.newContext()" in exc.value.message
 

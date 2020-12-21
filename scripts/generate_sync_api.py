@@ -18,6 +18,7 @@ import re
 from types import FunctionType
 from typing import Any, get_type_hints  # type: ignore
 
+from playwright._impl._helper import to_snake_case
 from scripts.documentation_provider import DocumentationProvider
 from scripts.generate_api import (
     all_types,
@@ -50,7 +51,7 @@ def generate(t: Any) -> None:
     for [name, type] in get_type_hints(t, api_globals).items():
         print("")
         print("    @property")
-        print(f"    def {name}(self) -> {process_type(type)}:")
+        print(f"    def {to_snake_case(name)}(self) -> {process_type(type)}:")
         documentation_provider.print_entry(class_name, name, {"return": type})
         [prefix, suffix] = return_value(type)
         prefix = "        return " + prefix + f"self._impl_obj.{name}"
@@ -63,7 +64,7 @@ def generate(t: Any) -> None:
             print("")
             print("    @property")
             print(
-                f"    def {name}({signature(value, len(name) + 9)}) -> {return_type(value)}:"
+                f"    def {to_snake_case(name)}({signature(value, len(name) + 9)}) -> {return_type(value)}:"
             )
             documentation_provider.print_entry(
                 class_name, name, get_type_hints(value, api_globals)
@@ -82,9 +83,10 @@ def generate(t: Any) -> None:
             and "expect_" not in name
             and "remove_listener" != name
         ):
+            is_async = inspect.iscoroutinefunction(value)
             print("")
             print(
-                f"    def {name}({signature(value, len(name) + 9)}) -> {return_type(value)}:"
+                f"    def {to_snake_case(name)}({signature(value, len(name) + 9)}) -> {return_type(value)}:"
             )
             documentation_provider.print_entry(
                 class_name, name, get_type_hints(value, api_globals)
@@ -92,15 +94,24 @@ def generate(t: Any) -> None:
             [prefix, suffix] = return_value(
                 get_type_hints(value, api_globals)["return"]
             )
-            if inspect.iscoroutinefunction(value):
-                prefix = (
-                    "        return " + prefix + f"self._sync(self._impl_obj.{name}("
-                )
+            if is_async:
+                prefix = prefix + f"self._sync(self._impl_obj.{name}("
                 suffix = "))" + suffix
             else:
-                prefix = "        return " + prefix + f"self._impl_obj.{name}("
+                prefix = prefix + f"self._impl_obj.{name}("
                 suffix = ")" + suffix
-            print(f"{prefix}{arguments(value, len(prefix))}{suffix}")
+
+            print(
+                f"""
+        try:
+            log_api("=> {to_snake_case(class_name)}.{to_snake_case(name)} started")
+            result = {prefix}{arguments(value, len(prefix))}{suffix}
+            log_api("<= {to_snake_case(class_name)}.{to_snake_case(name)} succeded")
+            return result
+        except Exception as e:
+            log_api("<= {to_snake_case(class_name)}.{to_snake_case(name)} failed")
+            raise e"""
+            )
         if "expect_" in name:
             print("")
             return_type_value = return_type(value)
@@ -140,7 +151,7 @@ def generate(t: Any) -> None:
             elif event_name == "loadstate":
                 wait_for_method = "waitForLoadState(state, timeout)"
             elif event_name == "navigation":
-                wait_for_method = "waitForNavigation(url, waitUntil, timeout)"
+                wait_for_method = "waitForNavigation(url, wait_until, timeout)"
             elif event_name != "event":
                 print(f'        event = "{event_name}"')
 
@@ -154,7 +165,9 @@ def generate(t: Any) -> None:
 
 def main() -> None:
     print(header)
-    print("from playwright._sync_base import EventContextManager, SyncBase, mapping")
+    print(
+        "from playwright._impl._sync_base import EventContextManager, SyncBase, mapping"
+    )
     print("NoneType = type(None)")
 
     for t in all_types:

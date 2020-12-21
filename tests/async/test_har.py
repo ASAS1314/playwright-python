@@ -19,8 +19,8 @@ import os
 
 async def test_should_work(browser, server, tmpdir):
     path = os.path.join(tmpdir, "log.har")
-    context = await browser.newContext(recordHar={"path": path})
-    page = await context.newPage()
+    context = await browser.new_context(record_har_path=path)
+    page = await context.new_page()
     await page.goto(server.EMPTY_PAGE)
     await context.close()
     with open(path) as f:
@@ -30,8 +30,10 @@ async def test_should_work(browser, server, tmpdir):
 
 async def test_should_omit_content(browser, server, tmpdir):
     path = os.path.join(tmpdir, "log.har")
-    context = await browser.newContext(recordHar={"path": path, "omitContent": True})
-    page = await context.newPage()
+    context = await browser.new_context(
+        record_har_path=path, record_har_omit_content=True
+    )
+    page = await context.new_page()
     await page.goto(server.PREFIX + "/har.html")
     await context.close()
     with open(path) as f:
@@ -45,8 +47,8 @@ async def test_should_omit_content(browser, server, tmpdir):
 
 async def test_should_include_content(browser, server, tmpdir):
     path = os.path.join(tmpdir, "log.har")
-    context = await browser.newContext(recordHar={"path": path})
-    page = await context.newPage()
+    context = await browser.new_context(record_har_path=path)
+    page = await context.new_page()
     await page.goto(server.PREFIX + "/har.html")
     await context.close()
     with open(path) as f:

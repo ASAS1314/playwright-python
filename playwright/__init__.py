@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 """
 Python package `playwright` is a Python library to automate Chromium,
 Firefox and WebKit with a single API. Playwright is built to enable cross-browser
@@ -18,62 +19,6 @@ web automation that is ever-green, capable, reliable and fast.
 For more information you'll find the documentation for the sync API [here](sync_api.html)
 and for the async API [here](async_api.html).
 """
-
-import playwright._types as types
-from playwright._main import AsyncPlaywrightContextManager, SyncPlaywrightContextManager
-
-ConsoleMessageLocation = types.ConsoleMessageLocation
-Cookie = types.Cookie
-Credentials = types.Credentials
-DeviceDescriptor = types.DeviceDescriptor
-Error = types.Error
-FilePayload = types.FilePayload
-FloatRect = types.FloatRect
-Geolocation = types.Geolocation
-IntSize = types.IntSize
-MousePosition = types.MousePosition
-PdfMargins = types.PdfMargins
-ProxyServer = types.ProxyServer
-RecordHarOptions = types.RecordHarOptions
-RecordVideoOptions = types.RecordVideoOptions
-RequestFailure = types.RequestFailure
-ResourceTiming = types.ResourceTiming
-SelectOption = types.SelectOption
-StorageState = types.StorageState
-TimeoutError = types.TimeoutError
-
-
-def async_playwright() -> AsyncPlaywrightContextManager:
-    return AsyncPlaywrightContextManager()
-
-
-def sync_playwright() -> SyncPlaywrightContextManager:
-    return SyncPlaywrightContextManager()
-
-
-__all__ = [
-    "async_playwright",
-    "sync_playwright",
-    "ConsoleMessageLocation",
-    "Cookie",
-    "Credentials",
-    "DeviceDescriptor",
-    "Error",
-    "FilePayload",
-    "FloatRect",
-    "Geolocation",
-    "IntSize",
-    "MousePosition",
-    "PdfMargins",
-    "ProxyServer",
-    "RecordHarOptions",
-    "RecordVideoOptions",
-    "RequestFailure",
-    "ResourceTiming",
-    "SelectOption",
-    "StorageState",
-    "TimeoutError",
-]
 
 __pdoc__ = {
     "_accessibility": False,
