@@ -60,6 +60,9 @@ class Request(ChannelOwner):
         }
         self._headers: Dict[str, str] = parse_headers(self._initializer["headers"])
 
+    def __repr__(self) -> str:
+        return f"<Request url={self.url!r} method={self.method!r}>"
+
     @property
     def url(self) -> str:
         return self._initializer["url"]
@@ -85,11 +88,12 @@ class Request(ChannelOwner):
         if not post_data:
             return None
         content_type = self.headers["content-type"]
-        if not content_type:
-            return None
         if content_type == "application/x-www-form-urlencoded":
             return dict(parse.parse_qsl(post_data))
-        return json.loads(post_data)
+        try:
+            return json.loads(post_data)
+        except Exception:
+            raise Error(f"POST data is not a valid JSON object: {post_data}")
 
     @property
     def post_data_buffer(self) -> Optional[bytes]:
@@ -134,6 +138,9 @@ class Route(ChannelOwner):
         self, parent: ChannelOwner, type: str, guid: str, initializer: Dict
     ) -> None:
         super().__init__(parent, type, guid, initializer)
+
+    def __repr__(self) -> str:
+        return f"<Route request={self.request}>"
 
     @property
     def request(self) -> Request:
@@ -217,6 +224,9 @@ class Response(ChannelOwner):
         self._request._timing["responseStart"] = timing["responseStart"]
         self._request._headers = parse_headers(self._initializer["requestHeaders"])
 
+    def __repr__(self) -> str:
+        return f"<Response url={self.url!r} request={self.request}>"
+
     @property
     def url(self) -> str:
         return self._initializer["url"]
@@ -288,6 +298,9 @@ class WebSocket(ChannelOwner):
             "error", lambda params: self.emit(WebSocket.Events.Error, params["error"])
         )
         self._channel.on("close", lambda params: self._on_close())
+
+    def __repr__(self) -> str:
+        return f"<WebSocket url={self.url!r}>"
 
     @property
     def url(self) -> str:

@@ -1,4 +1,4 @@
-# 🎭 [Playwright](https://playwright.dev) for Python [![PyPI version](https://badge.fury.io/py/playwright.svg)](https://pypi.python.org/pypi/playwright/) [![Join Slack](https://img.shields.io/badge/join-slack-infomational)](https://join.slack.com/t/playwright/shared_invite/enQtOTEyMTUxMzgxMjIwLThjMDUxZmIyNTRiMTJjNjIyMzdmZDA3MTQxZWUwZTFjZjQwNGYxZGM5MzRmNzZlMWI5ZWUyOTkzMjE5Njg1NDg)
+# 🎭 [Playwright](https://playwright.dev) for Python [![PyPI version](https://badge.fury.io/py/playwright.svg)](https://pypi.python.org/pypi/playwright/) [![Join Slack](https://img.shields.io/badge/join-slack-infomational)](https://aka.ms/playwright-slack)
 
 #### [Docs](https://playwright.dev/python/docs/intro) | [API](https://playwright.dev/python/docs/api/class-playwright)
 
@@ -6,25 +6,25 @@ Playwright is a Python library to automate [Chromium](https://www.chromium.org/H
 
 |          | Linux | macOS | Windows |
 |   :---   | :---: | :---: | :---:   |
-| Chromium <!-- GEN:chromium-version -->90.0.4421.0<!-- GEN:stop --> | ✅ | ✅ | ✅ |
-| WebKit <!-- GEN:webkit-version -->14.1<!-- GEN:stop --> | ✅ | ✅ | ✅ |
-| Firefox <!-- GEN:firefox-version -->86.0b10<!-- GEN:stop --> | ✅ | ✅ | ✅ |
+| Chromium <!-- GEN:chromium-version -->90.0.4430.0<!-- GEN:stop --> | ✅ | ✅ | ✅ |
+| WebKit <!-- GEN:webkit-version -->14.2<!-- GEN:stop --> | ✅ | ✅ | ✅ |
+| Firefox <!-- GEN:firefox-version -->87.0b10<!-- GEN:stop --> | ✅ | ✅ | ✅ |
 
 Headless execution is supported for all browsers on all platforms.
 
-* [Usage](#usage)
+- [Usage](#usage)
   - [Record and generate code](#record-and-generate-code)
   - [Sync API](#sync-api)
   - [Async API](#async-api)
   - [With pytest](#with-pytest)
   - [Interactive mode (REPL)](#interactive-mode-repl)
-* [Examples](#examples)
+- [Examples](#examples)
   - [Mobile and geolocation](#mobile-and-geolocation)
   - [Evaluate JS in browser](#evaluate-js-in-browser)
   - [Intercept network requests](#intercept-network-requests)
-* [Documentation](#documentation)
-* [Is Playwright ready?](#is-playwright-ready)
-* [Migration from the pre-release versions](#migration-from-the-pre-release-versions)
+- [Documentation](#documentation)
+- [Is Playwright ready?](#is-playwright-ready)
+- [Migration from the pre-release versions](#migration-from-the-pre-release-versions)
 
 ## Usage
 
@@ -66,8 +66,11 @@ with sync_playwright() as p:
 #### Async API
 
 If you app is based on the modern asyncio loop and you are used to async/await constructs,
-Playwright exposes Async API for you. You should also use this API inside the Jupyter Notebook
-and other REPL frameworks that are already based on asyncio.
+Playwright exposes Async API for you. You should use this API inside a Python REPL supporting `asyncio` like with `python -m asyncio`
+
+```console
+$ python -m asyncio
+```
 
 ```py
 import asyncio
@@ -115,7 +118,11 @@ Blocking REPL, as in CLI:
 >>> playwright.stop()
 ```
 
-Async REPL such as Jupyter Notebook:
+Async REPL such as `asyncio` REPL:
+
+```console
+$ python -m asyncio
+```
 
 ```py
 >>> from playwright.async_api import async_playwright
@@ -178,6 +185,7 @@ async def main():
 
 asyncio.run(main())
 ```
+
 </details>
 
 #### Evaluate JS in browser
@@ -201,6 +209,7 @@ with sync_playwright() as p:
     print(dimensions)
     browser.close()
 ```
+
 <details>
 <summary>Async variant</summary>
 
@@ -225,6 +234,7 @@ async def main():
 
 asyncio.run(main())
 ```
+
 </details>
 
 #### Intercept network requests
@@ -248,6 +258,7 @@ with sync_playwright() as p:
     page.goto("http://todomvc.com")
     browser.close()
 ```
+
 <details>
 <summary>Async variant</summary>
 
@@ -271,6 +282,7 @@ async def main():
 
 asyncio.run(main())
 ```
+
 </details>
 
 ## Documentation
@@ -288,12 +300,14 @@ every release, but we promise to not break it anymore!
 ## Migration from the pre-release versions
 
 The API has changed since the last 0.170.0 version:
+
 - Snake case notation for methods and arguments:
 
   ```py
   # old
   browser.newPage()
   ```
+
   ```py
   # new
   browser.new_page()

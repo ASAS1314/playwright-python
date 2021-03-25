@@ -2837,7 +2837,7 @@ class Frame(AsyncBase):
         Returns the return value of `expression` as a `JSHandle`.
 
         The only difference between `frame.evaluate()` and `frame.evaluate_handle()` is that
-        [method: Frame.evaluateHandle`] returns `JSHandle`.
+        `frame.evaluate_handle()` returns `JSHandle`.
 
         If the function, passed to the `frame.evaluate_handle()`, returns a [Promise], then
         `frame.evaluate_handle()` would wait for the promise to resolve and return its value.
@@ -4359,7 +4359,7 @@ class Worker(AsyncBase):
         wait for the promise to resolve and return its value.
 
         If the function passed to the `worker.evaluate()` returns a non-[Serializable] value, then
-        `worker.evaluate()` returns `undefined`. Playwright also supports transferring some  additional values that are
+        `worker.evaluate()` returns `undefined`. Playwright also supports transferring some additional values that are
         not serializable by `JSON`: `-0`, `NaN`, `Infinity`, `-Infinity`.
 
         Parameters
@@ -4629,7 +4629,7 @@ class Download(AsyncBase):
     async def delete(self) -> NoneType:
         """Download.delete
 
-        Deletes the downloaded file.
+        Deletes the downloaded file. Will wait for the download to finish if necessary.
         """
 
         return mapping.from_maybe_impl(
@@ -4639,7 +4639,7 @@ class Download(AsyncBase):
     async def failure(self) -> typing.Optional[str]:
         """Download.failure
 
-        Returns download error if any.
+        Returns download error if any. Will wait for the download to finish if necessary.
 
         Returns
         -------
@@ -4653,7 +4653,8 @@ class Download(AsyncBase):
     async def path(self) -> typing.Optional[pathlib.Path]:
         """Download.path
 
-        Returns path to the downloaded file in case of successful download.
+        Returns path to the downloaded file in case of successful download. The method will wait for the download to finish if
+        necessary.
 
         Returns
         -------
@@ -4667,7 +4668,7 @@ class Download(AsyncBase):
     async def save_as(self, path: typing.Union[str, pathlib.Path]) -> NoneType:
         """Download.save_as
 
-        Saves the download to a user-specified path.
+        Saves the download to a user-specified path. It is safe to call this method while the download is still in progress.
 
         Parameters
         ----------
@@ -7666,9 +7667,16 @@ class Page(AsyncBase):
         Returns the matched response.
 
         ```py
-        first_response = await page.wait_for_response(\"https://example.com/resource\")
-        final_response = await page.wait_for_response(lambda response: response.url == \"https://example.com\" and response.status === 200)
-        return final_response.ok
+        async with page.expect_response(\"https://example.com/resource\") as response_info:
+            await page.click(\"input\")
+        response = response_info.value
+        return response.ok
+
+        # or with a lambda
+        async with page.expect_response(lambda response: response.url == \"https://example.com\" and response.status === 200) as response_info:
+            await page.click(\"input\")
+        response = response_info.value
+        return response.ok
         ```
 
         Parameters
@@ -8623,7 +8631,7 @@ class Browser(AsyncBase):
             Specifies if viewport supports touch events. Defaults to false.
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. See
-            `page.emulate_media()` for more details. Defaults to '`light`'.
+            `page.emulate_media()` for more details. Defaults to `'light'`.
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         proxy : Union[{server: str, bypass: Union[str, NoneType], username: Union[str, NoneType], password: Union[str, NoneType]}, NoneType]
@@ -8631,11 +8639,14 @@ class Browser(AsyncBase):
             option to work. If all contexts override the proxy, global proxy will be never used and can be any string, for example
             `launch({ proxy: { server: 'per-context' } })`.
         record_har_path : Union[pathlib.Path, str, NoneType]
-            Path on the filesystem to write the HAR file to.
+            Enables [HAR](http://www.softwareishard.com/blog/har-12-spec) recording for all pages into the specified HAR file on the
+            filesystem. If not specified, the HAR is not recorded. Make sure to call `browser_context.close()` for the HAR to
+            be saved.
         record_har_omit_content : Union[bool, NoneType]
             Optional setting to control whether to omit request content from the HAR. Defaults to `false`.
         record_video_dir : Union[pathlib.Path, str, NoneType]
-            Path to the directory to put videos into.
+            Enables video recording for all pages into the specified directory. If not specified videos are not recorded. Make sure
+            to call `browser_context.close()` for videos to be saved.
         record_video_size : Union[{width: int, height: int}, NoneType]
             Dimensions of the recorded videos. If not specified the size will be equal to `viewport` scaled down to fit into
             800x800. If `viewport` is not configured explicitly the video size defaults to 800x450. Actual picture of each page will
@@ -8760,7 +8771,7 @@ class Browser(AsyncBase):
             Specifies if viewport supports touch events. Defaults to false.
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. See
-            `page.emulate_media()` for more details. Defaults to '`light`'.
+            `page.emulate_media()` for more details. Defaults to `'light'`.
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         proxy : Union[{server: str, bypass: Union[str, NoneType], username: Union[str, NoneType], password: Union[str, NoneType]}, NoneType]
@@ -8768,11 +8779,14 @@ class Browser(AsyncBase):
             option to work. If all contexts override the proxy, global proxy will be never used and can be any string, for example
             `launch({ proxy: { server: 'per-context' } })`.
         record_har_path : Union[pathlib.Path, str, NoneType]
-            Path on the filesystem to write the HAR file to.
+            Enables [HAR](http://www.softwareishard.com/blog/har-12-spec) recording for all pages into the specified HAR file on the
+            filesystem. If not specified, the HAR is not recorded. Make sure to call `browser_context.close()` for the HAR to
+            be saved.
         record_har_omit_content : Union[bool, NoneType]
             Optional setting to control whether to omit request content from the HAR. Defaults to `false`.
         record_video_dir : Union[pathlib.Path, str, NoneType]
-            Path to the directory to put videos into.
+            Enables video recording for all pages into the specified directory. If not specified videos are not recorded. Make sure
+            to call `browser_context.close()` for videos to be saved.
         record_video_size : Union[{width: int, height: int}, NoneType]
             Dimensions of the recorded videos. If not specified the size will be equal to `viewport` scaled down to fit into
             800x800. If `viewport` is not configured explicitly the video size defaults to 800x450. Actual picture of each page will
@@ -8872,6 +8886,16 @@ class BrowserType(AsyncBase):
         self,
         *,
         executable_path: typing.Union[str, pathlib.Path] = None,
+        channel: Literal[
+            "chrome",
+            "chrome-beta",
+            "chrome-canary",
+            "chrome-dev",
+            "msedge",
+            "msedge-beta",
+            "msedge-canary",
+            "msedge-dev",
+        ] = None,
         args: typing.List[str] = None,
         ignore_default_args: typing.Union[bool, typing.List[str]] = None,
         handle_sigint: bool = None,
@@ -8922,6 +8946,8 @@ class BrowserType(AsyncBase):
             Path to a browser executable to run instead of the bundled one. If `executablePath` is a relative path, then it is
             resolved relative to the current working directory. Note that Playwright only works with the bundled Chromium, Firefox
             or WebKit, use at your own risk.
+        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
+            Browser distribution channel.
         args : Union[List[str], NoneType]
             Additional arguments to pass to the browser instance. The list of Chromium flags can be found
             [here](http://peter.sh/experiments/chromium-command-line-switches/).
@@ -8970,6 +8996,7 @@ class BrowserType(AsyncBase):
                 "browser_type.launch",
                 self._impl_obj.launch(
                     executablePath=executable_path,
+                    channel=channel,
                     args=args,
                     ignoreDefaultArgs=ignore_default_args,
                     handleSIGINT=handle_sigint,
@@ -8992,6 +9019,16 @@ class BrowserType(AsyncBase):
         self,
         user_data_dir: typing.Union[str, pathlib.Path],
         *,
+        channel: Literal[
+            "chrome",
+            "chrome-beta",
+            "chrome-canary",
+            "chrome-dev",
+            "msedge",
+            "msedge-beta",
+            "msedge-canary",
+            "msedge-dev",
+        ] = None,
         executable_path: typing.Union[str, pathlib.Path] = None,
         args: typing.List[str] = None,
         ignore_default_args: typing.Union[bool, typing.List[str]] = None,
@@ -9043,6 +9080,8 @@ class BrowserType(AsyncBase):
             [Chromium](https://chromium.googlesource.com/chromium/src/+/master/docs/user_data_dir.md#introduction) and
             [Firefox](https://developer.mozilla.org/en-US/docs/Mozilla/Command_Line_Options#User_Profile). Note that Chromium's user
             data directory is the **parent** directory of the "Profile Path" seen at `chrome://version`.
+        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
+            Browser distribution channel.
         executable_path : Union[pathlib.Path, str, NoneType]
             Path to a browser executable to run instead of the bundled one. If `executablePath` is a relative path, then it is
             resolved relative to the current working directory. **BEWARE**: Playwright is only guaranteed to work with the bundled
@@ -9118,17 +9157,20 @@ class BrowserType(AsyncBase):
             Specifies if viewport supports touch events. Defaults to false.
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. See
-            `page.emulate_media()` for more details. Defaults to '`light`'.
+            `page.emulate_media()` for more details. Defaults to `'light'`.
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         chromium_sandbox : Union[bool, NoneType]
             Enable Chromium sandboxing. Defaults to `true`.
         record_har_path : Union[pathlib.Path, str, NoneType]
-            Path on the filesystem to write the HAR file to.
+            Enables [HAR](http://www.softwareishard.com/blog/har-12-spec) recording for all pages into the specified HAR file on the
+            filesystem. If not specified, the HAR is not recorded. Make sure to call `browser_context.close()` for the HAR to
+            be saved.
         record_har_omit_content : Union[bool, NoneType]
             Optional setting to control whether to omit request content from the HAR. Defaults to `false`.
         record_video_dir : Union[pathlib.Path, str, NoneType]
-            Path to the directory to put videos into.
+            Enables video recording for all pages into the specified directory. If not specified videos are not recorded. Make sure
+            to call `browser_context.close()` for videos to be saved.
         record_video_size : Union[{width: int, height: int}, NoneType]
             Dimensions of the recorded videos. If not specified the size will be equal to `viewport` scaled down to fit into
             800x800. If `viewport` is not configured explicitly the video size defaults to 800x450. Actual picture of each page will
@@ -9144,6 +9186,7 @@ class BrowserType(AsyncBase):
                 "browser_type.launch_persistent_context",
                 self._impl_obj.launch_persistent_context(
                     userDataDir=user_data_dir,
+                    channel=channel,
                     executablePath=executable_path,
                     args=args,
                     ignoreDefaultArgs=ignore_default_args,

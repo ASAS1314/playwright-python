@@ -48,19 +48,15 @@ class Transport:
 
     async def wait_until_stopped(self) -> None:
         await self._stopped_future
+        await self._proc.wait()
 
     async def run(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._stopped_future: asyncio.Future = asyncio.Future()
 
-        driver_env = os.environ.copy()
-        # VSCode's JavaScript Debug Terminal provides it but driver/pkg does not support it
-        driver_env.pop("NODE_OPTIONS", None)
-
-        proc = await asyncio.create_subprocess_exec(
+        self._proc = proc = await asyncio.create_subprocess_exec(
             str(self._driver_executable),
             "run-driver",
-            env=driver_env,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=_get_stderr_fileno(),

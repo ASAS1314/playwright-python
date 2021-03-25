@@ -15,8 +15,8 @@
 import glob
 import os
 import shutil
-import subprocess
 import sys
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -24,7 +24,7 @@ import setuptools
 from auditwheel.wheeltools import InWheel
 from wheel.bdist_wheel import bdist_wheel as BDistWheelCommand
 
-driver_version = "1.9.0-1614037901000"
+driver_version = "1.10.0-next-1616530863000"
 
 
 def extractall(zip: zipfile.ZipFile, path: str) -> None:
@@ -54,9 +54,7 @@ class PlaywrightBDistWheelCommand(BDistWheelCommand):
                 url = url + "next/"
                 url = url + zip_file
                 print("Fetching ", url)
-                subprocess.check_call(
-                    ["curl", "--http1.1", url, "-o", "driver/" + zip_file]
-                )
+                urllib.request.urlretrieve(url, "driver/" + zip_file)
         base_wheel_location = glob.glob("dist/*.whl")[0]
         without_platform = base_wheel_location[:-7]
         platform_map = {

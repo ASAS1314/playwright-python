@@ -25,6 +25,7 @@ from playwright._impl._browser import Browser, normalize_context_params
 from playwright._impl._browser_context import BrowserContext
 from playwright._impl._connection import ChannelOwner, from_channel
 from playwright._impl._helper import (
+    BrowserChannel,
     ColorScheme,
     Env,
     locals_to_params,
@@ -38,6 +39,9 @@ class BrowserType(ChannelOwner):
     ) -> None:
         super().__init__(parent, type, guid, initializer)
 
+    def __repr__(self) -> str:
+        return f"<BrowserType name={self.name} executable_path={self.executable_path}>"
+
     @property
     def name(self) -> str:
         return self._initializer["name"]
@@ -49,6 +53,7 @@ class BrowserType(ChannelOwner):
     async def launch(
         self,
         executablePath: Union[str, Path] = None,
+        channel: BrowserChannel = None,
         args: List[str] = None,
         ignoreDefaultArgs: Union[bool, List[str]] = None,
         handleSIGINT: bool = None,
@@ -69,13 +74,14 @@ class BrowserType(ChannelOwner):
         try:
             return from_channel(await self._channel.send("launch", params))
         except Exception as e:
-            if f"{self.name}-" in str(e):
+            if "because executable doesn't exist" in str(e):
                 raise not_installed_error(f'"{self.name}" browser was not found.')
             raise e
 
     async def launch_persistent_context(
         self,
         userDataDir: Union[str, Path],
+        channel: BrowserChannel = None,
         executablePath: Union[str, Path] = None,
         args: List[str] = None,
         ignoreDefaultArgs: Union[bool, List[str]] = None,
@@ -124,7 +130,7 @@ class BrowserType(ChannelOwner):
             context._options = params
             return context
         except Exception as e:
-            if f"{self.name}-" in str(e):
+            if "because executable doesn't exist" in str(e):
                 raise not_installed_error(f'"{self.name}" browser was not found.')
             raise e
 

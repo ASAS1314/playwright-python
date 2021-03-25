@@ -14,17 +14,18 @@
 
 import asyncio
 import json
-from asyncio.futures import Future
+from asyncio import Future
 from typing import Dict, List, cast
 
 import pytest
 
-from playwright.async_api import Error, Page, Request, Response
+from playwright.async_api import Error, Page, Request, Response, Route
 
 
 async def test_request_fulfill(page, server):
-    async def handle_request(route, request):
+    async def handle_request(route: Route, request: Request):
         assert route.request == request
+        assert repr(route) == f"<Route request={route.request}>"
         assert "empty.html" in request.url
         assert request.headers["user-agent"]
         assert request.method == "GET"
@@ -33,6 +34,9 @@ async def test_request_fulfill(page, server):
         assert request.resource_type == "document"
         assert request.frame == page.main_frame
         assert request.frame.url == "about:blank"
+        assert (
+            repr(request) == f"<Request url={request.url!r} method={request.method!r}>"
+        )
         await route.fulfill(body="Text")
 
     await page.route(
@@ -41,7 +45,11 @@ async def test_request_fulfill(page, server):
     )
 
     response = await page.goto(server.EMPTY_PAGE)
+
     assert response.ok
+    assert (
+        repr(response) == f"<Response url={response.url!r} request={response.request}>"
+    )
     assert await response.text() == "Text"
 
 
@@ -277,6 +285,44 @@ async def test_should_parse_the_data_if_content_type_is_form_urlencoded(page, se
 async def test_should_be_undefined_when_there_is_no_post_data(page, server):
     response = await page.goto(server.EMPTY_PAGE)
     assert response.request.post_data_json is None
+
+
+async def test_should_return_post_data_without_content_type(page, server):
+    await page.goto(server.EMPTY_PAGE)
+    async with page.expect_request("**/*") as request_info:
+        await page.evaluate(
+            """({url}) => {
+            const request = new Request(url, {
+                method: 'POST',
+                body: JSON.stringify({ value: 42 }),
+            });
+            request.headers.set('content-type', '');
+            return fetch(request);
+        }""",
+            {"url": server.PREFIX + "/title.html"},
+        )
+    request = await request_info.value
+    assert request.post_data_json == {"value": 42}
+
+
+async def test_should_throw_on_invalid_json_in_post_data(page, server):
+    await page.goto(server.EMPTY_PAGE)
+    async with page.expect_request("**/*") as request_info:
+        await page.evaluate(
+            """({url}) => {
+            const request = new Request(url, {
+                method: 'POST',
+                body: '<not a json>',
+            });
+            request.headers.set('content-type', '');
+            return fetch(request);
+        }""",
+            {"url": server.PREFIX + "/title.html"},
+        )
+    request = await request_info.value
+    with pytest.raises(Error) as exc_info:
+        print(request.post_data_json)
+    assert "POST data is not a valid JSON object: <not a json>" in str(exc_info.value)
 
 
 async def test_should_work_with_binary_post_data(page, server):

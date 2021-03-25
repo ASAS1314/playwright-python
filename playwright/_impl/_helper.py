@@ -52,6 +52,17 @@ DocumentLoadState = Literal["domcontentloaded", "load", "networkidle"]
 KeyboardModifier = Literal["Alt", "Control", "Meta", "Shift"]
 MouseButton = Literal["left", "middle", "right"]
 
+BrowserChannel = Literal[
+    "chrome",
+    "chrome-beta",
+    "chrome-canary",
+    "chrome-dev",
+    "msedge",
+    "msedge-beta",
+    "msedge-canary",
+    "msedge-dev",
+]
+
 
 class ErrorPayload(TypedDict, total=False):
     message: str
@@ -203,7 +214,7 @@ def is_safe_close_error(error: Exception) -> bool:
 
 
 def not_installed_error(message: str) -> Exception:
-    return Exception(
+    return Error(
         f"""
 ================================================================================
 {message}
