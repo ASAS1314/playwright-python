@@ -536,7 +536,6 @@ async def test_wait_for_nav_should_work_with_dom_history_back_forward(page, serv
     assert page.url == server.PREFIX + "/second.html"
 
 
-@pytest.mark.skip_browser("firefox")
 async def test_wait_for_nav_should_work_when_subframe_issues_window_stop(page, server):
     server.set_route("/frames/style.css", lambda _: None)
     navigation_promise = asyncio.create_task(
@@ -970,7 +969,7 @@ def expect_ssl_error(error_message: str, browser_name: str) -> None:
         if sys.platform == "darwin":
             assert "The certificate for this server is invalid" in error_message
         elif sys.platform == "win32":
-            assert "SSL connect error" in error_message
+            assert "SSL peer certificate or SSH remote key was not OK" in error_message
         else:
             assert "Unacceptable TLS certificate" in error_message
     else:

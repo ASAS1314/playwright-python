@@ -29,6 +29,7 @@ from playwright._impl._api_structures import (
     ViewportSize,
 )
 from playwright._impl._api_types import Error
+from playwright._impl._artifact import Artifact
 from playwright._impl._connection import (
     ChannelOwner,
     from_channel,
@@ -110,6 +111,7 @@ class Page(ChannelOwner):
         self, parent: ChannelOwner, type: str, guid: str, initializer: Dict
     ) -> None:
         super().__init__(parent, type, guid, initializer)
+        self._browser_context: BrowserContext = None  # type: ignore
         self.accessibility = Accessibility(self._channel)
         self.keyboard = Keyboard(self._channel)
         self.mouse = Mouse(self._channel)
@@ -285,7 +287,9 @@ class Page(ChannelOwner):
     def _on_download(self, params: Any) -> None:
         url = params["url"]
         suggested_filename = params["suggestedFilename"]
-        artifact = from_channel(params["artifact"])
+        artifact = cast(Artifact, from_channel(params["artifact"]))
+        if self._browser_context._browser:
+            artifact._is_remote = self._browser_context._browser._is_remote
         self.emit(
             Page.Events.Download, Download(self, url, suggested_filename, artifact)
         )
@@ -608,6 +612,7 @@ class Page(ChannelOwner):
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         return await self._main_frame.click(**locals_to_params(locals()))
 
@@ -621,6 +626,7 @@ class Page(ChannelOwner):
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         return await self._main_frame.dblclick(**locals_to_params(locals()))
 
@@ -632,6 +638,7 @@ class Page(ChannelOwner):
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         return await self._main_frame.tap(**locals_to_params(locals()))
 
@@ -664,6 +671,7 @@ class Page(ChannelOwner):
         position: Position = None,
         timeout: float = None,
         force: bool = None,
+        trial: bool = None,
     ) -> None:
         return await self._main_frame.hover(**locals_to_params(locals()))
 
@@ -712,18 +720,22 @@ class Page(ChannelOwner):
     async def check(
         self,
         selector: str,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         return await self._main_frame.check(**locals_to_params(locals()))
 
     async def uncheck(
         self,
         selector: str,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         return await self._main_frame.uncheck(**locals_to_params(locals()))
 
@@ -777,8 +789,6 @@ class Page(ChannelOwner):
     def video(
         self,
     ) -> Optional[Video]:
-        if "recordVideo" not in self._browser_context._options:
-            return None
         if not self._video:
             self._video = Video(self)
         return self._video
@@ -850,7 +860,7 @@ class Page(ChannelOwner):
             if matcher:
                 return matcher.matches(request.url)
             if predicate:
-                return url_or_predicate(request)
+                return predicate(request)
             return True
 
         return self.expect_event(

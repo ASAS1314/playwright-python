@@ -59,6 +59,7 @@ BrowserChannel = Literal[
     "chrome-beta",
     "chrome-canary",
     "chrome-dev",
+    "firefox-stable",
     "msedge",
     "msedge-beta",
     "msedge-canary",
@@ -170,13 +171,14 @@ def parse_error(error: ErrorPayload) -> Error:
     base_error_class = Error
     if error.get("name") == "TimeoutError":
         base_error_class = TimeoutError
-    return base_error_class(
-        cast(str, patch_error_message(error.get("message"))), error["stack"]
-    )
+    exc = base_error_class(cast(str, patch_error_message(error.get("message"))))
+    exc.name = error["name"]
+    exc.stack = error["stack"]
+    return exc
 
 
 def patch_error_message(message: Optional[str]) -> Optional[str]:
-    if not message:
+    if message is None:
         return None
 
     match = re.match(r"(\w+)(: expected .*)", message)

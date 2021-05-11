@@ -123,6 +123,7 @@ async def test_page_events_request_should_report_requests_and_responses_handled_
     assert sw_response == "responseFromServiceWorker:foo"
     assert request.url == server.PREFIX + "/serviceworkers/fetchdummy/foo"
     response = await request.response()
+    assert response
     assert response.url == server.PREFIX + "/serviceworkers/fetchdummy/foo"
     assert await response.text() == "responseFromServiceWorker:foo"
 
@@ -170,6 +171,7 @@ async def test_request_headers_should_work(
         assert "WebKit" in response.request.headers["user-agent"]
 
 
+@pytest.mark.xfail
 async def test_request_headers_should_get_the_same_headers_as_the_server(
     page: Page, server, is_webkit, is_win
 ):

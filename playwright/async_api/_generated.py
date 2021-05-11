@@ -560,7 +560,7 @@ class Route(AsyncBase):
                 \"foo\": \"bar\" # set \"foo\" header
                 \"origin\": None # remove \"origin\" header
             }
-            await route.continue(headers=headers)
+            await route.continue_(headers=headers)
         }
         await page.route(\"**/*\", handle)
         ```
@@ -784,6 +784,7 @@ class Keyboard(AsyncBase):
         ```
 
         > NOTE: Modifier keys DO NOT effect `keyboard.type`. Holding down `Shift` will not type the text in upper case.
+        > NOTE: For characters that are not on a US keyboard, only an `input` event will be sent.
 
         Parameters
         ----------
@@ -1464,7 +1465,8 @@ class ElementHandle(JSHandle):
         ] = None,
         position: Position = None,
         timeout: float = None,
-        force: bool = None
+        force: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """ElementHandle.hover
 
@@ -1474,10 +1476,10 @@ class ElementHandle(JSHandle):
         1. Use `page.mouse` to hover over the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        If the element is detached from the DOM at any moment during the action, this method rejects.
+        If the element is detached from the DOM at any moment during the action, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
@@ -1492,13 +1494,20 @@ class ElementHandle(JSHandle):
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
         force : Union[bool, NoneType]
             Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
             await self._async(
                 "element_handle.hover",
                 self._impl_obj.hover(
-                    modifiers=modifiers, position=position, timeout=timeout, force=force
+                    modifiers=modifiers,
+                    position=position,
+                    timeout=timeout,
+                    force=force,
+                    trial=trial,
                 ),
             )
         )
@@ -1515,7 +1524,8 @@ class ElementHandle(JSHandle):
         click_count: int = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """ElementHandle.click
 
@@ -1525,10 +1535,10 @@ class ElementHandle(JSHandle):
         1. Use `page.mouse` to click in the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        If the element is detached from the DOM at any moment during the action, this method rejects.
+        If the element is detached from the DOM at any moment during the action, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
@@ -1553,6 +1563,9 @@ class ElementHandle(JSHandle):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -1567,6 +1580,7 @@ class ElementHandle(JSHandle):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -1582,7 +1596,8 @@ class ElementHandle(JSHandle):
         button: Literal["left", "middle", "right"] = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """ElementHandle.dblclick
 
@@ -1591,12 +1606,12 @@ class ElementHandle(JSHandle):
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to double click in the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set. Note that if the
-           first click of the `dblclick()` triggers a navigation event, this method will reject.
+           first click of the `dblclick()` triggers a navigation event, this method will throw.
 
-        If the element is detached from the DOM at any moment during the action, this method rejects.
+        If the element is detached from the DOM at any moment during the action, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         > NOTE: `elementHandle.dblclick()` dispatches two `click` events and a single `dblclick` event.
 
@@ -1621,6 +1636,9 @@ class ElementHandle(JSHandle):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -1634,6 +1652,7 @@ class ElementHandle(JSHandle):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -1650,12 +1669,16 @@ class ElementHandle(JSHandle):
     ) -> typing.List[str]:
         """ElementHandle.select_option
 
+        This method waits for [actionability](./actionability.md) checks, waits until all specified options are present in the
+        `<select>` element and selects these options.
+
+        If the target element is not a `<select>` element, this method throws an error. However, if the element is inside the
+        `<label>` element that has an associated
+        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), the control will be used instead.
+
         Returns the array of option values that have been successfully selected.
 
-        Triggers a `change` and `input` event once all the provided options have been selected. If element is not a `<select>`
-        element, the method throws an error.
-
-        Will wait until all specified options are present in the `<select>` element.
+        Triggers a `change` and `input` event once all the provided options have been selected.
 
         ```py
         # single selection matching the value
@@ -1714,7 +1737,8 @@ class ElementHandle(JSHandle):
         position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """ElementHandle.tap
 
@@ -1724,10 +1748,10 @@ class ElementHandle(JSHandle):
         1. Use `page.touchscreen` to tap the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        If the element is detached from the DOM at any moment during the action, this method rejects.
+        If the element is detached from the DOM at any moment during the action, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         > NOTE: `elementHandle.tap()` requires that the `hasTouch` option of the browser context be set to true.
 
@@ -1748,6 +1772,9 @@ class ElementHandle(JSHandle):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -1759,6 +1786,7 @@ class ElementHandle(JSHandle):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -1769,10 +1797,14 @@ class ElementHandle(JSHandle):
         """ElementHandle.fill
 
         This method waits for [actionability](./actionability.md) checks, focuses the element, fills it and triggers an `input`
-        event after filling. If the element is inside the `<label>` element that has associated
-        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), that control will be filled
-        instead. If the element to be filled is not an `<input>`, `<textarea>` or `[contenteditable]` element, this method
-        throws an error. Note that you can pass an empty string to clear the input field.
+        event after filling. Note that you can pass an empty string to clear the input field.
+
+        If the target element is not an `<input>`, `<textarea>` or `[contenteditable]` element, this method throws an error.
+        However, if the element is inside the `<label>` element that has an associated
+        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), the control will be filled
+        instead.
+
+        To send fine-grained keyboard events, use `element_handle.type()`.
 
         Parameters
         ----------
@@ -1973,26 +2005,35 @@ class ElementHandle(JSHandle):
         )
 
     async def check(
-        self, *, timeout: float = None, force: bool = None, no_wait_after: bool = None
+        self,
+        *,
+        position: Position = None,
+        timeout: float = None,
+        force: bool = None,
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """ElementHandle.check
 
         This method checks the element by performing the following steps:
-        1. Ensure that element is a checkbox or a radio input. If not, this method rejects. If the element is already
-           checked, this method returns immediately.
+        1. Ensure that element is a checkbox or a radio input. If not, this method throws. If the element is already checked,
+           this method returns immediately.
         1. Wait for [actionability](./actionability.md) checks on the element, unless `force` option is set.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
-        1. Ensure that the element is now checked. If not, this method rejects.
+        1. Ensure that the element is now checked. If not, this method throws.
 
-        If the element is detached from the DOM at any moment during the action, this method rejects.
+        If the element is detached from the DOM at any moment during the action, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
+        position : Union[{x: float, y: float}, NoneType]
+            A point to use relative to the top-left corner of element padding box. If not specified, uses some visible point of the
+            element.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -2002,38 +2043,54 @@ class ElementHandle(JSHandle):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
             await self._async(
                 "element_handle.check",
                 self._impl_obj.check(
-                    timeout=timeout, force=force, noWaitAfter=no_wait_after
+                    position=position,
+                    timeout=timeout,
+                    force=force,
+                    noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
 
     async def uncheck(
-        self, *, timeout: float = None, force: bool = None, no_wait_after: bool = None
+        self,
+        *,
+        position: Position = None,
+        timeout: float = None,
+        force: bool = None,
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """ElementHandle.uncheck
 
         This method checks the element by performing the following steps:
-        1. Ensure that element is a checkbox or a radio input. If not, this method rejects. If the element is already
+        1. Ensure that element is a checkbox or a radio input. If not, this method throws. If the element is already
            unchecked, this method returns immediately.
         1. Wait for [actionability](./actionability.md) checks on the element, unless `force` option is set.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
-        1. Ensure that the element is now unchecked. If not, this method rejects.
+        1. Ensure that the element is now unchecked. If not, this method throws.
 
-        If the element is detached from the DOM at any moment during the action, this method rejects.
+        If the element is detached from the DOM at any moment during the action, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
+        position : Union[{x: float, y: float}, NoneType]
+            A point to use relative to the top-left corner of element padding box. If not specified, uses some visible point of the
+            element.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -2043,13 +2100,20 @@ class ElementHandle(JSHandle):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
             await self._async(
                 "element_handle.uncheck",
                 self._impl_obj.uncheck(
-                    timeout=timeout, force=force, noWaitAfter=no_wait_after
+                    position=position,
+                    timeout=timeout,
+                    force=force,
+                    noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -3500,20 +3564,21 @@ class Frame(AsyncBase):
         click_count: int = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Frame.click
 
         This method clicks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
@@ -3541,6 +3606,9 @@ class Frame(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -3556,6 +3624,7 @@ class Frame(AsyncBase):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -3572,21 +3641,22 @@ class Frame(AsyncBase):
         button: Literal["left", "middle", "right"] = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Frame.dblclick
 
         This method double clicks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to double click in the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set. Note that if the
-           first click of the `dblclick()` triggers a navigation event, this method will reject.
+           first click of the `dblclick()` triggers a navigation event, this method will throw.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         > NOTE: `frame.dblclick()` dispatches two `click` events and a single `dblclick` event.
 
@@ -3614,6 +3684,9 @@ class Frame(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -3628,6 +3701,7 @@ class Frame(AsyncBase):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -3642,20 +3716,21 @@ class Frame(AsyncBase):
         position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Frame.tap
 
         This method taps an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.touchscreen` to tap the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         > NOTE: `frame.tap()` requires that the `hasTouch` option of the browser context be set to true.
 
@@ -3679,6 +3754,9 @@ class Frame(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -3691,6 +3769,7 @@ class Frame(AsyncBase):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -3706,10 +3785,13 @@ class Frame(AsyncBase):
         """Frame.fill
 
         This method waits for an element matching `selector`, waits for [actionability](./actionability.md) checks, focuses the
-        element, fills it and triggers an `input` event after filling. If the element is inside the `<label>` element that has
-        associated [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), that control will be
-        filled instead. If the element to be filled is not an `<input>`, `<textarea>` or `[contenteditable]` element, this
-        method throws an error. Note that you can pass an empty string to clear the input field.
+        element, fills it and triggers an `input` event after filling. Note that you can pass an empty string to clear the input
+        field.
+
+        If the target element is not an `<input>`, `<textarea>` or `[contenteditable]` element, this method throws an error.
+        However, if the element is inside the `<label>` element that has an associated
+        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), the control will be filled
+        instead.
 
         To send fine-grained keyboard events, use `frame.type()`.
 
@@ -3884,20 +3966,21 @@ class Frame(AsyncBase):
         ] = None,
         position: Position = None,
         timeout: float = None,
-        force: bool = None
+        force: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Frame.hover
 
         This method hovers over an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to hover over the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
@@ -3915,6 +3998,9 @@ class Frame(AsyncBase):
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
         force : Union[bool, NoneType]
             Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -3926,6 +4012,7 @@ class Frame(AsyncBase):
                     position=position,
                     timeout=timeout,
                     force=force,
+                    trial=trial,
                 ),
             )
         )
@@ -3943,12 +4030,16 @@ class Frame(AsyncBase):
     ) -> typing.List[str]:
         """Frame.select_option
 
+        This method waits for an element matching `selector`, waits for [actionability](./actionability.md) checks, waits until
+        all specified options are present in the `<select>` element and selects these options.
+
+        If the target element is not a `<select>` element, this method throws an error. However, if the element is inside the
+        `<label>` element that has an associated
+        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), the control will be used instead.
+
         Returns the array of option values that have been successfully selected.
 
-        Triggers a `change` and `input` event once all the provided options have been selected. If there's no `<select>` element
-        matching `selector`, the method throws an error.
-
-        Will wait until all specified options are present in the `<select>` element.
+        Triggers a `change` and `input` event once all the provided options have been selected.
 
         ```py
         # single selection matching the value
@@ -4165,31 +4256,36 @@ class Frame(AsyncBase):
         self,
         selector: str,
         *,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Frame.check
 
         This method checks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
-        1. Ensure that matched element is a checkbox or a radio input. If not, this method rejects. If the element is already
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Ensure that matched element is a checkbox or a radio input. If not, this method throws. If the element is already
            checked, this method returns immediately.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
-        1. Ensure that the element is now checked. If not, this method rejects.
+        1. Ensure that the element is now checked. If not, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
         selector : str
             A selector to search for element. If there are multiple elements satisfying the selector, the first will be used. See
             [working with selectors](./selectors.md) for more details.
+        position : Union[{x: float, y: float}, NoneType]
+            A point to use relative to the top-left corner of element padding box. If not specified, uses some visible point of the
+            element.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -4199,6 +4295,9 @@ class Frame(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -4206,9 +4305,11 @@ class Frame(AsyncBase):
                 "frame.check",
                 self._impl_obj.check(
                     selector=selector,
+                    position=position,
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -4217,31 +4318,36 @@ class Frame(AsyncBase):
         self,
         selector: str,
         *,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Frame.uncheck
 
         This method checks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
-        1. Ensure that matched element is a checkbox or a radio input. If not, this method rejects. If the element is already
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Ensure that matched element is a checkbox or a radio input. If not, this method throws. If the element is already
            unchecked, this method returns immediately.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
-        1. Ensure that the element is now unchecked. If not, this method rejects.
+        1. Ensure that the element is now unchecked. If not, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Parameters
         ----------
         selector : str
             A selector to search for element. If there are multiple elements satisfying the selector, the first will be used. See
             [working with selectors](./selectors.md) for more details.
+        position : Union[{x: float, y: float}, NoneType]
+            A point to use relative to the top-left corner of element padding box. If not specified, uses some visible point of the
+            element.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -4251,6 +4357,9 @@ class Frame(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -4258,9 +4367,11 @@ class Frame(AsyncBase):
                 "frame.uncheck",
                 self._impl_obj.uncheck(
                     selector=selector,
+                    position=position,
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -4532,6 +4643,8 @@ class ConsoleMessage(AsyncBase):
     def text(self) -> str:
         """ConsoleMessage.text
 
+        The text of the console message.
+
         Returns
         -------
         str
@@ -4541,6 +4654,8 @@ class ConsoleMessage(AsyncBase):
     @property
     def args(self) -> typing.List["JSHandle"]:
         """ConsoleMessage.args
+
+        List of arguments passed to a `console` function call. See also `page.on('console')`.
 
         Returns
         -------
@@ -6133,6 +6248,9 @@ class Page(AsyncBase):
     ) -> NoneType:
         """Page.emulate_media
 
+        This method changes the `CSS media type` through the `media` argument, and/or the `'prefers-colors-scheme'` media
+        feature, using the `colorScheme` argument.
+
         ```py
         await page.evaluate(\"matchMedia('screen').matches\")
         # → True
@@ -6287,6 +6405,18 @@ class Page(AsyncBase):
         await page.route(re.compile(r\"(\\.png$)|(\\.jpg$)\"), lambda route: route.abort())
         await page.goto(\"https://example.com\")
         await browser.close()
+        ```
+
+        It is possible to examine the request to decide the route action. For example, mocking all requests that contain some
+        post data, and leaving all other requests as is:
+
+        ```py
+        def handle_route(route):
+          if (\"my-string\" in route.request.post_data)
+            route.fulfill(body=\"mocked-data\")
+          else
+            route.continue_()
+        await page.route(\"/api/**\", handle_route)
         ```
 
         Page routes take precedence over browser context routes (set up with `browser_context.route()`) when request
@@ -6462,20 +6592,21 @@ class Page(AsyncBase):
         click_count: int = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Page.click
 
         This method clicks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Shortcut for main frame's `frame.click()`.
 
@@ -6505,6 +6636,9 @@ class Page(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -6520,6 +6654,7 @@ class Page(AsyncBase):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -6536,21 +6671,22 @@ class Page(AsyncBase):
         button: Literal["left", "middle", "right"] = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Page.dblclick
 
         This method double clicks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to double click in the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set. Note that if the
-           first click of the `dblclick()` triggers a navigation event, this method will reject.
+           first click of the `dblclick()` triggers a navigation event, this method will throw.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         > NOTE: `page.dblclick()` dispatches two `click` events and a single `dblclick` event.
 
@@ -6580,6 +6716,9 @@ class Page(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -6594,6 +6733,7 @@ class Page(AsyncBase):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -6608,20 +6748,21 @@ class Page(AsyncBase):
         position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Page.tap
 
         This method taps an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.touchscreen` to tap the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         > NOTE: `page.tap()` requires that the `hasTouch` option of the browser context be set to true.
 
@@ -6647,6 +6788,9 @@ class Page(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -6659,6 +6803,7 @@ class Page(AsyncBase):
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -6674,14 +6819,17 @@ class Page(AsyncBase):
         """Page.fill
 
         This method waits for an element matching `selector`, waits for [actionability](./actionability.md) checks, focuses the
-        element, fills it and triggers an `input` event after filling. If the element is inside the `<label>` element that has
-        associated [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), that control will be
-        filled instead. If the element to be filled is not an `<input>`, `<textarea>` or `[contenteditable]` element, this
-        method throws an error. Note that you can pass an empty string to clear the input field.
+        element, fills it and triggers an `input` event after filling. Note that you can pass an empty string to clear the input
+        field.
+
+        If the target element is not an `<input>`, `<textarea>` or `[contenteditable]` element, this method throws an error.
+        However, if the element is inside the `<label>` element that has an associated
+        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), the control will be filled
+        instead.
 
         To send fine-grained keyboard events, use `page.type()`.
 
-        Shortcut for main frame's `frame.fill()`
+        Shortcut for main frame's `frame.fill()`.
 
         Parameters
         ----------
@@ -6856,20 +7004,21 @@ class Page(AsyncBase):
         ] = None,
         position: Position = None,
         timeout: float = None,
-        force: bool = None
+        force: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Page.hover
 
         This method hovers over an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to hover over the center of the element, or the specified `position`.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Shortcut for main frame's `frame.hover()`.
 
@@ -6889,6 +7038,9 @@ class Page(AsyncBase):
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
         force : Union[bool, NoneType]
             Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -6900,6 +7052,7 @@ class Page(AsyncBase):
                     position=position,
                     timeout=timeout,
                     force=force,
+                    trial=trial,
                 ),
             )
         )
@@ -6917,12 +7070,16 @@ class Page(AsyncBase):
     ) -> typing.List[str]:
         """Page.select_option
 
+        This method waits for an element matching `selector`, waits for [actionability](./actionability.md) checks, waits until
+        all specified options are present in the `<select>` element and selects these options.
+
+        If the target element is not a `<select>` element, this method throws an error. However, if the element is inside the
+        `<label>` element that has an associated
+        [control](https://developer.mozilla.org/en-US/docs/Web/API/HTMLLabelElement/control), the control will be used instead.
+
         Returns the array of option values that have been successfully selected.
 
-        Triggers a `change` and `input` event once all the provided options have been selected. If there's no `<select>` element
-        matching `selector`, the method throws an error.
-
-        Will wait until all specified options are present in the `<select>` element.
+        Triggers a `change` and `input` event once all the provided options have been selected.
 
         ```py
         # single selection matching the value
@@ -6933,7 +7090,7 @@ class Page(AsyncBase):
         await page.select_option(\"select#colors\", value=[\"red\", \"green\", \"blue\"])
         ```
 
-        Shortcut for main frame's `frame.select_option()`
+        Shortcut for main frame's `frame.select_option()`.
 
         Parameters
         ----------
@@ -7158,25 +7315,27 @@ class Page(AsyncBase):
         self,
         selector: str,
         *,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Page.check
 
         This method checks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
-        1. Ensure that matched element is a checkbox or a radio input. If not, this method rejects. If the element is already
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Ensure that matched element is a checkbox or a radio input. If not, this method throws. If the element is already
            checked, this method returns immediately.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
-        1. Ensure that the element is now checked. If not, this method rejects.
+        1. Ensure that the element is now checked. If not, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Shortcut for main frame's `frame.check()`.
 
@@ -7185,6 +7344,9 @@ class Page(AsyncBase):
         selector : str
             A selector to search for element. If there are multiple elements satisfying the selector, the first will be used. See
             [working with selectors](./selectors.md) for more details.
+        position : Union[{x: float, y: float}, NoneType]
+            A point to use relative to the top-left corner of element padding box. If not specified, uses some visible point of the
+            element.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -7194,6 +7356,9 @@ class Page(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -7201,9 +7366,11 @@ class Page(AsyncBase):
                 "page.check",
                 self._impl_obj.check(
                     selector=selector,
+                    position=position,
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -7212,25 +7379,27 @@ class Page(AsyncBase):
         self,
         selector: str,
         *,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        trial: bool = None
     ) -> NoneType:
         """Page.uncheck
 
         This method unchecks an element matching `selector` by performing the following steps:
-        1. Find an element match matching `selector`. If there is none, wait until a matching element is attached to the DOM.
-        1. Ensure that matched element is a checkbox or a radio input. If not, this method rejects. If the element is already
+        1. Find an element matching `selector`. If there is none, wait until a matching element is attached to the DOM.
+        1. Ensure that matched element is a checkbox or a radio input. If not, this method throws. If the element is already
            unchecked, this method returns immediately.
         1. Wait for [actionability](./actionability.md) checks on the matched element, unless `force` option is set. If the
            element is detached during the checks, the whole action is retried.
         1. Scroll the element into view if needed.
         1. Use `page.mouse` to click in the center of the element.
         1. Wait for initiated navigations to either succeed or fail, unless `noWaitAfter` option is set.
-        1. Ensure that the element is now unchecked. If not, this method rejects.
+        1. Ensure that the element is now unchecked. If not, this method throws.
 
-        When all steps combined have not finished during the specified `timeout`, this method rejects with a `TimeoutError`.
-        Passing zero timeout disables this.
+        When all steps combined have not finished during the specified `timeout`, this method throws a `TimeoutError`. Passing
+        zero timeout disables this.
 
         Shortcut for main frame's `frame.uncheck()`.
 
@@ -7239,6 +7408,9 @@ class Page(AsyncBase):
         selector : str
             A selector to search for element. If there are multiple elements satisfying the selector, the first will be used. See
             [working with selectors](./selectors.md) for more details.
+        position : Union[{x: float, y: float}, NoneType]
+            A point to use relative to the top-left corner of element padding box. If not specified, uses some visible point of the
+            element.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -7248,6 +7420,9 @@ class Page(AsyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        trial : Union[bool, NoneType]
+            When set, this method only performs the [actionability](./actionability.md) checks and skips the action. Defaults to
+            `false`. Useful to wait until the element is ready for the action without performing it.
         """
 
         return mapping.from_maybe_impl(
@@ -7255,9 +7430,11 @@ class Page(AsyncBase):
                 "page.uncheck",
                 self._impl_obj.uncheck(
                     selector=selector,
+                    position=position,
                     timeout=timeout,
                     force=force,
                     noWaitAfter=no_wait_after,
+                    trial=trial,
                 ),
             )
         )
@@ -7550,7 +7727,7 @@ class Page(AsyncBase):
     ) -> AsyncEventContextManager["ConsoleMessage"]:
         """Page.expect_console_message
 
-        Performs action and waits for a [ConoleMessage] to be logged by in the page. If predicate is provided, it passes
+        Performs action and waits for a `ConsoleMessage` to be logged by in the page. If predicate is provided, it passes
         `ConsoleMessage` value into the `predicate` function and waits for `predicate(message)` to return a truthy value. Will
         throw an error if the page is closed before the console event is fired.
 
@@ -7730,13 +7907,15 @@ class Page(AsyncBase):
     ) -> AsyncEventContextManager["Request"]:
         """Page.expect_request
 
-        Waits for the matching request and returns it.
+        Waits for the matching request and returns it.  See [waiting for event](./events.md#waiting-for-event) for more details
+        about events.
 
         ```py
         async with page.expect_request(\"http://example.com/resource\") as first:
             await page.click('button')
         first_request = await first.value
 
+        # or with a lambda
         async with page.expect_request(lambda request: request.url == \"http://example.com\" and request.method == \"get\") as second:
             await page.click('img')
         second_request = await second.value
@@ -7771,7 +7950,7 @@ class Page(AsyncBase):
     ) -> AsyncEventContextManager["Response"]:
         """Page.expect_response
 
-        Returns the matched response.
+        Returns the matched response. See [waiting for event](./events.md#waiting-for-event) for more details about events.
 
         ```py
         async with page.expect_response(\"https://example.com/resource\") as response_info:
@@ -8346,6 +8525,18 @@ class BrowserContext(AsyncBase):
         await browser.close()
         ```
 
+        It is possible to examine the request to decide the route action. For example, mocking all requests that contain some
+        post data, and leaving all other requests as is:
+
+        ```py
+        def handle_route(route):
+          if (\"my-string\" in route.request.post_data)
+            route.fulfill(body=\"mocked-data\")
+          else
+            route.continue_()
+        await context.route(\"/api/**\", handle_route)
+        ```
+
         Page routes (set up with `page.route()`) take precedence over browser context routes when request matches both
         handlers.
 
@@ -8746,9 +8937,11 @@ class Browser(AsyncBase):
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         proxy : Union[{server: str, bypass: Union[str, NoneType], username: Union[str, NoneType], password: Union[str, NoneType]}, NoneType]
-            Network proxy settings to use with this context. Note that browser needs to be launched with the global proxy for this
-            option to work. If all contexts override the proxy, global proxy will be never used and can be any string, for example
-            `launch({ proxy: { server: 'per-context' } })`.
+            Network proxy settings to use with this context.
+
+            > NOTE: For Chromium on Windows the browser needs to be launched with the global proxy for this option to work. If all
+            contexts override the proxy, global proxy will be never used and can be any string, for example `launch({ proxy: {
+            server: 'http://per-context' } })`.
         record_har_path : Union[pathlib.Path, str, NoneType]
             Enables [HAR](http://www.softwareishard.com/blog/har-12-spec) recording for all pages into the specified HAR file on the
             filesystem. If not specified, the HAR is not recorded. Make sure to call `browser_context.close()` for the HAR to
@@ -8891,9 +9084,11 @@ class Browser(AsyncBase):
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         proxy : Union[{server: str, bypass: Union[str, NoneType], username: Union[str, NoneType], password: Union[str, NoneType]}, NoneType]
-            Network proxy settings to use with this context. Note that browser needs to be launched with the global proxy for this
-            option to work. If all contexts override the proxy, global proxy will be never used and can be any string, for example
-            `launch({ proxy: { server: 'per-context' } })`.
+            Network proxy settings to use with this context.
+
+            > NOTE: For Chromium on Windows the browser needs to be launched with the global proxy for this option to work. If all
+            contexts override the proxy, global proxy will be never used and can be any string, for example `launch({ proxy: {
+            server: 'http://per-context' } })`.
         record_har_path : Union[pathlib.Path, str, NoneType]
             Enables [HAR](http://www.softwareishard.com/blog/har-12-spec) recording for all pages into the specified HAR file on the
             filesystem. If not specified, the HAR is not recorded. Make sure to call `browser_context.close()` for the HAR to
@@ -9088,6 +9283,7 @@ class BrowserType(AsyncBase):
             "chrome-beta",
             "chrome-canary",
             "chrome-dev",
+            "firefox-stable",
             "msedge",
             "msedge-beta",
             "msedge-canary",
@@ -9143,7 +9339,7 @@ class BrowserType(AsyncBase):
             Path to a browser executable to run instead of the bundled one. If `executablePath` is a relative path, then it is
             resolved relative to the current working directory. Note that Playwright only works with the bundled Chromium, Firefox
             or WebKit, use at your own risk.
-        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
+        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "firefox-stable", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
             Browser distribution channel. Read more about using
             [Google Chrome and Microsoft Edge](./browsers.md#google-chrome--microsoft-edge).
         args : Union[List[str], NoneType]
@@ -9222,6 +9418,7 @@ class BrowserType(AsyncBase):
             "chrome-beta",
             "chrome-canary",
             "chrome-dev",
+            "firefox-stable",
             "msedge",
             "msedge-beta",
             "msedge-canary",
@@ -9279,8 +9476,9 @@ class BrowserType(AsyncBase):
             [Chromium](https://chromium.googlesource.com/chromium/src/+/master/docs/user_data_dir.md#introduction) and
             [Firefox](https://developer.mozilla.org/en-US/docs/Mozilla/Command_Line_Options#User_Profile). Note that Chromium's user
             data directory is the **parent** directory of the "Profile Path" seen at `chrome://version`.
-        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
-            Browser distribution channel.
+        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "firefox-stable", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
+            Browser distribution channel. Read more about using
+            [Google Chrome and Microsoft Edge](./browsers.md#google-chrome--microsoft-edge).
         executable_path : Union[pathlib.Path, str, NoneType]
             Path to a browser executable to run instead of the bundled one. If `executablePath` is a relative path, then it is
             resolved relative to the current working directory. **BEWARE**: Playwright is only guaranteed to work with the bundled
@@ -9426,6 +9624,95 @@ class BrowserType(AsyncBase):
                     recordHarOmitContent=record_har_omit_content,
                     recordVideoDir=record_video_dir,
                     recordVideoSize=record_video_size,
+                ),
+            )
+        )
+
+    async def connect_over_cdp(
+        self,
+        endpoint_url: str,
+        *,
+        timeout: float = None,
+        slow_mo: float = None,
+        headers: typing.Optional[typing.Dict[str, str]] = None
+    ) -> "Browser":
+        """BrowserType.connect_over_cdp
+
+        This methods attaches Playwright to an existing browser instance using the Chrome DevTools Protocol.
+
+        The default browser context is accessible via `browser.contexts()`.
+
+        > NOTE: Connecting over the Chrome DevTools Protocol is only supported for Chromium-based browsers.
+
+        Parameters
+        ----------
+        endpoint_url : str
+            A CDP websocket endpoint or http url to connect to. For example `http://localhost:9222/` or
+            `ws://127.0.0.1:9222/devtools/browser/387adf4c-243f-4051-a181-46798f4a46f4`.
+        timeout : Union[float, NoneType]
+            Maximum time in milliseconds to wait for the connection to be established. Defaults to `30000` (30 seconds). Pass `0` to
+            disable timeout.
+        slow_mo : Union[float, NoneType]
+            Slows down Playwright operations by the specified amount of milliseconds. Useful so that you can see what is going on.
+            Defaults to 0.
+        headers : Union[Dict[str, str], NoneType]
+            Additional HTTP headers to be sent with connect request. Optional.
+
+        Returns
+        -------
+        Browser
+        """
+
+        return mapping.from_impl(
+            await self._async(
+                "browser_type.connect_over_cdp",
+                self._impl_obj.connect_over_cdp(
+                    endpointURL=endpoint_url,
+                    timeout=timeout,
+                    slow_mo=slow_mo,
+                    headers=mapping.to_impl(headers),
+                ),
+            )
+        )
+
+    async def connect(
+        self,
+        ws_endpoint: str,
+        *,
+        timeout: float = None,
+        slow_mo: float = None,
+        headers: typing.Optional[typing.Dict[str, str]] = None
+    ) -> "Browser":
+        """BrowserType.connect
+
+        This methods attaches Playwright to an existing browser instance.
+
+        Parameters
+        ----------
+        ws_endpoint : str
+            A browser websocket endpoint to connect to.
+        timeout : Union[float, NoneType]
+            Maximum time in milliseconds to wait for the connection to be established. Defaults to `30000` (30 seconds). Pass `0` to
+            disable timeout.
+        slow_mo : Union[float, NoneType]
+            Slows down Playwright operations by the specified amount of milliseconds. Useful so that you can see what is going on.
+            Defaults to 0.
+        headers : Union[Dict[str, str], NoneType]
+            Additional HTTP headers to be sent with web socket connect request. Optional.
+
+        Returns
+        -------
+        Browser
+        """
+
+        return mapping.from_impl(
+            await self._async(
+                "browser_type.connect",
+                self._impl_obj.connect(
+                    ws_endpoint=ws_endpoint,
+                    timeout=timeout,
+                    slow_mo=slow_mo,
+                    headers=mapping.to_impl(headers),
                 ),
             )
         )

@@ -388,6 +388,7 @@ class Frame(ChannelOwner):
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         await self._channel.send("click", locals_to_params(locals()))
 
@@ -401,6 +402,7 @@ class Frame(ChannelOwner):
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         await self._channel.send("dblclick", locals_to_params(locals()))
 
@@ -412,6 +414,7 @@ class Frame(ChannelOwner):
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         await self._channel.send("tap", locals_to_params(locals()))
 
@@ -444,6 +447,7 @@ class Frame(ChannelOwner):
         position: Position = None,
         timeout: float = None,
         force: bool = None,
+        trial: bool = None,
     ) -> None:
         await self._channel.send("hover", locals_to_params(locals()))
 
@@ -501,18 +505,22 @@ class Frame(ChannelOwner):
     async def check(
         self,
         selector: str,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         await self._channel.send("check", locals_to_params(locals()))
 
     async def uncheck(
         self,
         selector: str,
+        position: Position = None,
         timeout: float = None,
         force: bool = None,
         noWaitAfter: bool = None,
+        trial: bool = None,
     ) -> None:
         await self._channel.send("uncheck", locals_to_params(locals()))
 

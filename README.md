@@ -6,9 +6,9 @@ Playwright is a Python library to automate [Chromium](https://www.chromium.org/H
 
 |          | Linux | macOS | Windows |
 |   :---   | :---: | :---: | :---:   |
-| Chromium <!-- GEN:chromium-version -->91.0.4455.0<!-- GEN:stop --> | ✅ | ✅ | ✅ |
+| Chromium <!-- GEN:chromium-version -->92.0.4498.0<!-- GEN:stop --> | ✅ | ✅ | ✅ |
 | WebKit <!-- GEN:webkit-version -->14.2<!-- GEN:stop --> | ✅ | ✅ | ✅ |
-| Firefox <!-- GEN:firefox-version -->88.0b6<!-- GEN:stop --> | ✅ | ✅ | ✅ |
+| Firefox <!-- GEN:firefox-version -->89.0b6<!-- GEN:stop --> | ✅ | ✅ | ✅ |
 
 Headless execution is supported for all browsers on all platforms.
 
@@ -23,8 +23,6 @@ Headless execution is supported for all browsers on all platforms.
   - [Evaluate JS in browser](#evaluate-js-in-browser)
   - [Intercept network requests](#intercept-network-requests)
 - [Documentation](#documentation)
-- [Is Playwright ready?](#is-playwright-ready)
-- [Migration from the pre-release versions](#migration-from-the-pre-release-versions)
 
 ## Usage
 
@@ -65,7 +63,7 @@ with sync_playwright() as p:
 
 #### Async API
 
-If you app is based on the modern asyncio loop and you are used to async/await constructs,
+If your app is based on the modern asyncio loop and you are used to async/await constructs,
 Playwright exposes Async API for you. You should use this API inside a Python REPL supporting `asyncio` like with `python -m asyncio`
 
 ```console
