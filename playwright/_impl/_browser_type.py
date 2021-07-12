@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+import pathlib
 from pathlib import Path
 from typing import Dict, List, Optional, Union, cast
 
@@ -32,9 +33,9 @@ from playwright._impl._connection import (
     from_nullable_channel,
 )
 from playwright._impl._helper import (
-    BrowserChannel,
     ColorScheme,
     Env,
+    ReducedMotion,
     locals_to_params,
     not_installed_error,
 )
@@ -62,7 +63,7 @@ class BrowserType(ChannelOwner):
     async def launch(
         self,
         executablePath: Union[str, Path] = None,
-        channel: BrowserChannel = None,
+        channel: str = None,
         args: List[str] = None,
         ignoreDefaultArgs: Union[bool, List[str]] = None,
         handleSIGINT: bool = None,
@@ -75,6 +76,7 @@ class BrowserType(ChannelOwner):
         proxy: ProxySettings = None,
         downloadsPath: Union[str, Path] = None,
         slowMo: float = None,
+        tracesDir: Union[pathlib.Path, str] = None,
         chromiumSandbox: bool = None,
         firefoxUserPrefs: Dict[str, Union[str, float, bool]] = None,
     ) -> Browser:
@@ -90,7 +92,7 @@ class BrowserType(ChannelOwner):
     async def launch_persistent_context(
         self,
         userDataDir: Union[str, Path],
-        channel: BrowserChannel = None,
+        channel: str = None,
         executablePath: Union[str, Path] = None,
         args: List[str] = None,
         ignoreDefaultArgs: Union[bool, List[str]] = None,
@@ -122,7 +124,9 @@ class BrowserType(ChannelOwner):
         isMobile: bool = None,
         hasTouch: bool = None,
         colorScheme: ColorScheme = None,
+        reducedMotion: ReducedMotion = None,
         acceptDownloads: bool = None,
+        tracesDir: Union[pathlib.Path, str] = None,
         chromiumSandbox: bool = None,
         recordHarPath: Union[Path, str] = None,
         recordHarOmitContent: bool = None,
@@ -131,7 +135,7 @@ class BrowserType(ChannelOwner):
     ) -> BrowserContext:
         userDataDir = str(Path(userDataDir))
         params = locals_to_params(locals())
-        normalize_context_params(self._connection._is_sync, params)
+        await normalize_context_params(self._connection._is_sync, params)
         normalize_launch_params(params)
         try:
             context = from_channel(
@@ -178,7 +182,9 @@ class BrowserType(ChannelOwner):
         if timeout is None:
             timeout = 30000
 
-        transport = WebSocketTransport(self._connection._loop, ws_endpoint, headers)
+        transport = WebSocketTransport(
+            self._connection._loop, ws_endpoint, headers, slow_mo
+        )
         connection = Connection(
             self._connection._dispatcher_fiber,
             self._connection._object_factory,
@@ -207,7 +213,14 @@ class BrowserType(ChannelOwner):
         browser._is_remote = True
         browser._is_connected_over_websocket = True
 
-        transport.once("close", browser._on_close)
+        def handle_transport_close() -> None:
+            for context in browser.contexts:
+                for page in context.pages:
+                    page._on_close()
+                context._on_close()
+            browser._on_close()
+
+        transport.once("close", handle_transport_close)
 
         return browser
 

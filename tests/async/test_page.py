@@ -18,7 +18,8 @@ import re
 
 import pytest
 
-from playwright.async_api import Error, TimeoutError
+from playwright.async_api import Error, Page, TimeoutError
+from tests.server import Server
 
 
 async def test_close_should_reject_all_promises(context):
@@ -126,9 +127,6 @@ async def test_async_stacks_should_work(page, server):
     with pytest.raises(Error) as exc_info:
         await page.goto(server.EMPTY_PAGE)
     assert __file__ in exc_info.value.stack
-
-
-# TODO: bring in page.crash events
 
 
 async def test_opener_should_provide_access_to_the_opener_page(page):
@@ -766,7 +764,6 @@ async def test_select_option_should_select_only_first_option(page, server):
     assert await page.evaluate("result.onChange") == ["blue"]
 
 
-@pytest.mark.skip_browser("webkit")  # TODO: investigate
 async def test_select_option_should_not_throw_when_select_causes_navigation(
     page, server
 ):
@@ -1221,3 +1218,31 @@ async def test_frame_press_should_work(page, server):
     frame = page.frame("inner")
     await frame.press("textarea", "a")
     assert await frame.evaluate("document.querySelector('textarea').value") == "a"
+
+
+async def test_should_emulate_reduced_motion(page, server):
+    assert await page.evaluate(
+        "matchMedia('(prefers-reduced-motion: no-preference)').matches"
+    )
+    await page.emulate_media(reduced_motion="reduce")
+    assert await page.evaluate("matchMedia('(prefers-reduced-motion: reduce)').matches")
+    assert not await page.evaluate(
+        "matchMedia('(prefers-reduced-motion: no-preference)').matches"
+    )
+    await page.emulate_media(reduced_motion="no-preference")
+    assert not await page.evaluate(
+        "matchMedia('(prefers-reduced-motion: reduce)').matches"
+    )
+    assert await page.evaluate(
+        "matchMedia('(prefers-reduced-motion: no-preference)').matches"
+    )
+
+
+async def test_input_value(page: Page, server: Server):
+    await page.goto(server.PREFIX + "/input/textarea.html")
+
+    await page.fill("input", "my-text-content")
+    assert await page.input_value("input") == "my-text-content"
+
+    await page.fill("input", "")
+    assert await page.input_value("input") == ""

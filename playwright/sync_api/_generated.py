@@ -32,7 +32,9 @@ from playwright._impl._api_structures import (
     PdfMargins,
     Position,
     ProxySettings,
+    RemoteAddr,
     ResourceTiming,
+    SecurityDetails,
     SourceLocation,
     StorageState,
     ViewportSize,
@@ -59,7 +61,13 @@ from playwright._impl._page import Page as PageImpl
 from playwright._impl._page import Worker as WorkerImpl
 from playwright._impl._playwright import Playwright as PlaywrightImpl
 from playwright._impl._selectors import Selectors as SelectorsImpl
-from playwright._impl._sync_base import EventContextManager, SyncBase, mapping
+from playwright._impl._sync_base import (
+    EventContextManager,
+    SyncBase,
+    SyncContextManager,
+    mapping,
+)
+from playwright._impl._tracing import Tracing as TracingImpl
 from playwright._impl._video import Video as VideoImpl
 
 NoneType = type(None)
@@ -374,6 +382,34 @@ class Response(SyncBase):
         Frame
         """
         return mapping.from_impl(self._impl_obj.frame)
+
+    def server_addr(self) -> typing.Optional[RemoteAddr]:
+        """Response.server_addr
+
+        Returns the IP address and port of the server.
+
+        Returns
+        -------
+        Union[{ipAddress: str, port: int}, NoneType]
+        """
+
+        return mapping.from_impl_nullable(
+            self._sync("response.server_addr", self._impl_obj.server_addr())
+        )
+
+    def security_details(self) -> typing.Optional[SecurityDetails]:
+        """Response.security_details
+
+        Returns SSL and other security information.
+
+        Returns
+        -------
+        Union[{issuer: Union[str, NoneType], protocol: Union[str, NoneType], subjectName: Union[str, NoneType], validFrom: Union[int, NoneType], validTo: Union[int, NoneType]}, NoneType]
+        """
+
+        return mapping.from_impl_nullable(
+            self._sync("response.security_details", self._impl_obj.security_details())
+        )
 
     def finished(self) -> typing.Optional[str]:
         """Response.finished
@@ -1643,6 +1679,7 @@ class ElementHandle(JSHandle):
         label: typing.Union[str, typing.List[str]] = None,
         element: typing.Union["ElementHandle", typing.List["ElementHandle"]] = None,
         timeout: float = None,
+        force: bool = None,
         no_wait_after: bool = None
     ) -> typing.List[str]:
         """ElementHandle.select_option
@@ -1693,6 +1730,8 @@ class ElementHandle(JSHandle):
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
         no_wait_after : Union[bool, NoneType]
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
@@ -1712,6 +1751,7 @@ class ElementHandle(JSHandle):
                     label=label,
                     element=mapping.to_impl(element),
                     timeout=timeout,
+                    force=force,
                     noWaitAfter=no_wait_after,
                 ),
             )
@@ -1781,7 +1821,12 @@ class ElementHandle(JSHandle):
         )
 
     def fill(
-        self, value: str, *, timeout: float = None, no_wait_after: bool = None
+        self,
+        value: str,
+        *,
+        timeout: float = None,
+        no_wait_after: bool = None,
+        force: bool = None
     ) -> NoneType:
         """ElementHandle.fill
 
@@ -1806,18 +1851,20 @@ class ElementHandle(JSHandle):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
         """
 
         return mapping.from_maybe_impl(
             self._sync(
                 "element_handle.fill",
                 self._impl_obj.fill(
-                    value=value, timeout=timeout, noWaitAfter=no_wait_after
+                    value=value, timeout=timeout, noWaitAfter=no_wait_after, force=force
                 ),
             )
         )
 
-    def select_text(self, *, timeout: float = None) -> NoneType:
+    def select_text(self, *, force: bool = None, timeout: float = None) -> NoneType:
         """ElementHandle.select_text
 
         This method waits for [actionability](./actionability.md) checks, then focuses the element and selects all its text
@@ -1825,6 +1872,8 @@ class ElementHandle(JSHandle):
 
         Parameters
         ----------
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
         timeout : Union[float, NoneType]
             Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
             using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
@@ -1833,7 +1882,30 @@ class ElementHandle(JSHandle):
         return mapping.from_maybe_impl(
             self._sync(
                 "element_handle.select_text",
-                self._impl_obj.select_text(timeout=timeout),
+                self._impl_obj.select_text(force=force, timeout=timeout),
+            )
+        )
+
+    def input_value(self, *, timeout: float = None) -> str:
+        """ElementHandle.input_value
+
+        Returns `input.value` for `<input>` or `<textarea>` element. Throws for non-input elements.
+
+        Parameters
+        ----------
+        timeout : Union[float, NoneType]
+            Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
+            using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
+
+        Returns
+        -------
+        str
+        """
+
+        return mapping.from_maybe_impl(
+            self._sync(
+                "element_handle.input_value",
+                self._impl_obj.input_value(timeout=timeout),
             )
         )
 
@@ -3762,7 +3834,8 @@ class Frame(SyncBase):
         value: str,
         *,
         timeout: float = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        force: bool = None
     ) -> NoneType:
         """Frame.fill
 
@@ -3791,6 +3864,8 @@ class Frame(SyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
         """
 
         return mapping.from_maybe_impl(
@@ -3801,6 +3876,7 @@ class Frame(SyncBase):
                     value=value,
                     timeout=timeout,
                     noWaitAfter=no_wait_after,
+                    force=force,
                 ),
             )
         )
@@ -4008,7 +4084,8 @@ class Frame(SyncBase):
         label: typing.Union[str, typing.List[str]] = None,
         element: typing.Union["ElementHandle", typing.List["ElementHandle"]] = None,
         timeout: float = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        force: bool = None
     ) -> typing.List[str]:
         """Frame.select_option
 
@@ -4053,6 +4130,8 @@ class Frame(SyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
 
         Returns
         -------
@@ -4070,7 +4149,34 @@ class Frame(SyncBase):
                     element=mapping.to_impl(element),
                     timeout=timeout,
                     noWaitAfter=no_wait_after,
+                    force=force,
                 ),
+            )
+        )
+
+    def input_value(self, selector: str, *, timeout: float = None) -> str:
+        """Frame.input_value
+
+        Returns `input.value` for the selected `<input>` or `<textarea>` element. Throws for non-input elements.
+
+        Parameters
+        ----------
+        selector : str
+            A selector to search for element. If there are multiple elements satisfying the selector, the first will be used. See
+            [working with selectors](./selectors.md) for more details.
+        timeout : Union[float, NoneType]
+            Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
+            using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
+
+        Returns
+        -------
+        str
+        """
+
+        return mapping.from_maybe_impl(
+            self._sync(
+                "frame.input_value",
+                self._impl_obj.input_value(selector=selector, timeout=timeout),
             )
         )
 
@@ -4728,6 +4834,18 @@ class Download(SyncBase):
         super().__init__(obj)
 
     @property
+    def page(self) -> "Page":
+        """Download.page
+
+        Get the page that the download belongs to.
+
+        Returns
+        -------
+        Page
+        """
+        return mapping.from_impl(self._impl_obj.page)
+
+    @property
     def url(self) -> str:
         """Download.url
 
@@ -4796,12 +4914,13 @@ class Download(SyncBase):
     def save_as(self, path: typing.Union[str, pathlib.Path]) -> NoneType:
         """Download.save_as
 
-        Saves the download to a user-specified path. It is safe to call this method while the download is still in progress.
+        Copy the download to a user-specified path. It is safe to call this method while the download is still in progress. Will
+        wait for the download to finish if necessary.
 
         Parameters
         ----------
         path : Union[pathlib.Path, str]
-            Path where the download should be saved.
+            Path where the download should be copied.
         """
 
         return mapping.from_maybe_impl(
@@ -4859,7 +4978,7 @@ class Video(SyncBase):
 mapping.register(VideoImpl, Video)
 
 
-class Page(SyncBase):
+class Page(SyncContextManager):
     def __init__(self, obj: PageImpl):
         super().__init__(obj)
 
@@ -5082,7 +5201,7 @@ class Page(SyncBase):
         """Page.query_selector
 
         The method finds an element matching the specified selector within the page. If no elements match the selector, the
-        return value resolves to `null`.
+        return value resolves to `null`. To wait for an element on the page, use `page.wait_for_selector()`.
 
         Shortcut for main frame's `frame.query_selector()`.
 
@@ -5702,14 +5821,14 @@ class Page(SyncBase):
 
         > NOTE: Functions installed via `page.expose_function()` survive navigations.
 
-        An example of adding an `sha1` function to the page:
+        An example of adding a `sha256` function to the page:
 
         ```py
         import hashlib
         from playwright.sync_api import sync_playwright
 
-        def sha1(text):
-            m = hashlib.sha1()
+        def sha256(text):
+            m = hashlib.sha256()
             m.update(bytes(text, \"utf8\"))
             return m.hexdigest()
 
@@ -5717,11 +5836,11 @@ class Page(SyncBase):
             webkit = playwright.webkit
             browser = webkit.launch(headless=False)
             page = browser.new_page()
-            page.expose_function(\"sha1\", sha1)
+            page.expose_function(\"sha256\", sha256)
             page.set_content(\"\"\"
                 <script>
                   async function onClick() {
-                    document.querySelector('div').textContent = await window.sha1('PLAYWRIGHT');
+                    document.querySelector('div').textContent = await window.sha256('PLAYWRIGHT');
                   }
                 </script>
                 <button onclick=\"onClick()\">Click me</button>
@@ -6097,7 +6216,7 @@ class Page(SyncBase):
         > NOTE: In most cases, you should use `page.expect_event()`.
 
         Waits for given `event` to fire. If predicate is provided, it passes event's value into the `predicate` function and
-        waits for `predicate(event)` to return a truthy value. Will throw an error if the socket is closed before the `event` is
+        waits for `predicate(event)` to return a truthy value. Will throw an error if the page is closed before the `event` is
         fired.
 
         Parameters
@@ -6206,7 +6325,8 @@ class Page(SyncBase):
         self,
         *,
         media: Literal["print", "screen"] = None,
-        color_scheme: Literal["dark", "light", "no-preference"] = None
+        color_scheme: Literal["dark", "light", "no-preference"] = None,
+        reduced_motion: Literal["no-preference", "reduce"] = None
     ) -> NoneType:
         """Page.emulate_media
 
@@ -6249,12 +6369,17 @@ class Page(SyncBase):
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. Passing
             `null` disables color scheme emulation.
+        reduced_motion : Union["no-preference", "reduce", NoneType]
+            Emulates `'prefers-reduced-motion'` media feature, supported values are `'reduce'`, `'no-preference'`. Passing `null`
+            disables reduced motion emulation.
         """
 
         return mapping.from_maybe_impl(
             self._sync(
                 "page.emulate_media",
-                self._impl_obj.emulate_media(media=media, colorScheme=color_scheme),
+                self._impl_obj.emulate_media(
+                    media=media, colorScheme=color_scheme, reducedMotion=reduced_motion
+                ),
             )
         )
 
@@ -6773,7 +6898,8 @@ class Page(SyncBase):
         value: str,
         *,
         timeout: float = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        force: bool = None
     ) -> NoneType:
         """Page.fill
 
@@ -6804,6 +6930,8 @@ class Page(SyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
         """
 
         return mapping.from_maybe_impl(
@@ -6814,6 +6942,7 @@ class Page(SyncBase):
                     value=value,
                     timeout=timeout,
                     noWaitAfter=no_wait_after,
+                    force=force,
                 ),
             )
         )
@@ -7025,7 +7154,8 @@ class Page(SyncBase):
         label: typing.Union[str, typing.List[str]] = None,
         element: typing.Union["ElementHandle", typing.List["ElementHandle"]] = None,
         timeout: float = None,
-        no_wait_after: bool = None
+        no_wait_after: bool = None,
+        force: bool = None
     ) -> typing.List[str]:
         """Page.select_option
 
@@ -7073,6 +7203,8 @@ class Page(SyncBase):
             Actions that initiate navigations are waiting for these navigations to happen and for pages to start loading. You can
             opt out of waiting via setting this flag. You would only need this option in the exceptional cases such as navigating to
             inaccessible pages. Defaults to `false`.
+        force : Union[bool, NoneType]
+            Whether to bypass the [actionability](./actionability.md) checks. Defaults to `false`.
 
         Returns
         -------
@@ -7090,7 +7222,34 @@ class Page(SyncBase):
                     element=mapping.to_impl(element),
                     timeout=timeout,
                     noWaitAfter=no_wait_after,
+                    force=force,
                 ),
+            )
+        )
+
+    def input_value(self, selector: str, *, timeout: float = None) -> str:
+        """Page.input_value
+
+        Returns `input.value` for the selected `<input>` or `<textarea>` element. Throws for non-input elements.
+
+        Parameters
+        ----------
+        selector : str
+            A selector to search for element. If there are multiple elements satisfying the selector, the first will be used. See
+            [working with selectors](./selectors.md) for more details.
+        timeout : Union[float, NoneType]
+            Maximum time in milliseconds, defaults to 30 seconds, pass `0` to disable timeout. The default value can be changed by
+            using the `browser_context.set_default_timeout()` or `page.set_default_timeout()` methods.
+
+        Returns
+        -------
+        str
+        """
+
+        return mapping.from_maybe_impl(
+            self._sync(
+                "page.input_value",
+                self._impl_obj.input_value(selector=selector, timeout=timeout),
             )
         )
 
@@ -7683,7 +7842,7 @@ class Page(SyncBase):
 
         Performs action and waits for a `ConsoleMessage` to be logged by in the page. If predicate is provided, it passes
         `ConsoleMessage` value into the `predicate` function and waits for `predicate(message)` to return a truthy value. Will
-        throw an error if the page is closed before the console event is fired.
+        throw an error if the page is closed before the `page.on('console')` event is fired.
 
         Parameters
         ----------
@@ -7894,6 +8053,37 @@ class Page(SyncBase):
             ).future,
         )
 
+    def expect_request_finished(
+        self,
+        predicate: typing.Optional[typing.Callable[["Request"], bool]] = None,
+        *,
+        timeout: float = None
+    ) -> EventContextManager["Request"]:
+        """Page.expect_request_finished
+
+        Performs action and waits for a `Request` to finish loading. If predicate is provided, it passes `Request` value into
+        the `predicate` function and waits for `predicate(request)` to return a truthy value. Will throw an error if the page is
+        closed before the `page.on('request_finished')` event is fired.
+
+        Parameters
+        ----------
+        predicate : Union[Callable[[Request], bool], NoneType]
+            Receives the `Request` object and resolves to truthy value when the waiting should resolve.
+        timeout : Union[float, NoneType]
+            Maximum time to wait for in milliseconds. Defaults to `30000` (30 seconds). Pass `0` to disable timeout. The default
+            value can be changed by using the `browser_context.set_default_timeout()`.
+
+        Returns
+        -------
+        EventContextManager[Request]
+        """
+        return EventContextManager(
+            self,
+            self._impl_obj.expect_request_finished(
+                predicate=self._wrap_handler(predicate), timeout=timeout
+            ).future,
+        )
+
     def expect_response(
         self,
         url_or_predicate: typing.Union[
@@ -7938,6 +8128,37 @@ class Page(SyncBase):
             ).future,
         )
 
+    def expect_websocket(
+        self,
+        predicate: typing.Optional[typing.Callable[["WebSocket"], bool]] = None,
+        *,
+        timeout: float = None
+    ) -> EventContextManager["WebSocket"]:
+        """Page.expect_websocket
+
+        Performs action and waits for a new `WebSocket`. If predicate is provided, it passes `WebSocket` value into the
+        `predicate` function and waits for `predicate(webSocket)` to return a truthy value. Will throw an error if the page is
+        closed before the WebSocket event is fired.
+
+        Parameters
+        ----------
+        predicate : Union[Callable[[WebSocket], bool], NoneType]
+            Receives the `WebSocket` object and resolves to truthy value when the waiting should resolve.
+        timeout : Union[float, NoneType]
+            Maximum time to wait for in milliseconds. Defaults to `30000` (30 seconds). Pass `0` to disable timeout. The default
+            value can be changed by using the `browser_context.set_default_timeout()`.
+
+        Returns
+        -------
+        EventContextManager[WebSocket]
+        """
+        return EventContextManager(
+            self,
+            self._impl_obj.expect_websocket(
+                predicate=self._wrap_handler(predicate), timeout=timeout
+            ).future,
+        )
+
     def expect_worker(
         self,
         predicate: typing.Optional[typing.Callable[["Worker"], bool]] = None,
@@ -7973,7 +8194,7 @@ class Page(SyncBase):
 mapping.register(PageImpl, Page)
 
 
-class BrowserContext(SyncBase):
+class BrowserContext(SyncContextManager):
     def __init__(self, obj: BrowserContextImpl):
         super().__init__(obj)
 
@@ -8028,6 +8249,16 @@ class BrowserContext(SyncBase):
         List[Worker]
         """
         return mapping.from_impl_list(self._impl_obj.service_workers)
+
+    @property
+    def tracing(self) -> "Tracing":
+        """BrowserContext.tracing
+
+        Returns
+        -------
+        Tracing
+        """
+        return mapping.from_impl(self._impl_obj.tracing)
 
     def set_default_navigation_timeout(self, timeout: float) -> NoneType:
         """BrowserContext.set_default_navigation_timeout
@@ -8386,14 +8617,14 @@ class BrowserContext(SyncBase):
 
         See `page.expose_function()` for page-only version.
 
-        An example of adding an `md5` function to all pages in the context:
+        An example of adding a `sha256` function to all pages in the context:
 
         ```py
         import hashlib
         from playwright.sync_api import sync_playwright
 
-        def sha1(text):
-            m = hashlib.sha1()
+        def sha256(text):
+            m = hashlib.sha256()
             m.update(bytes(text, \"utf8\"))
             return m.hexdigest()
 
@@ -8401,13 +8632,12 @@ class BrowserContext(SyncBase):
             webkit = playwright.webkit
             browser = webkit.launch(headless=False)
             context = browser.new_context()
-            context.expose_function(\"sha1\", sha1)
+            context.expose_function(\"sha256\", sha256)
             page = context.new_page()
-            page.expose_function(\"sha1\", sha1)
             page.set_content(\"\"\"
                 <script>
                   async function onClick() {
-                    document.querySelector('div').textContent = await window.sha1('PLAYWRIGHT');
+                    document.querySelector('div').textContent = await window.sha256('PLAYWRIGHT');
                   }
                 </script>
                 <button onclick=\"onClick()\">Click me</button>
@@ -8617,8 +8847,8 @@ class BrowserContext(SyncBase):
         > NOTE: In most cases, you should use `browser_context.expect_event()`.
 
         Waits for given `event` to fire. If predicate is provided, it passes event's value into the `predicate` function and
-        waits for `predicate(event)` to return a truthy value. Will throw an error if the socket is closed before the `event` is
-        fired.
+        waits for `predicate(event)` to return a truthy value. Will throw an error if the browser context is closed before the
+        `event` is fired.
 
         Parameters
         ----------
@@ -8746,7 +8976,7 @@ class CDPSession(SyncBase):
 mapping.register(CDPSessionImpl, CDPSession)
 
 
-class Browser(SyncBase):
+class Browser(SyncContextManager):
     def __init__(self, obj: BrowserImpl):
         super().__init__(obj)
 
@@ -8814,6 +9044,7 @@ class Browser(SyncBase):
         is_mobile: bool = None,
         has_touch: bool = None,
         color_scheme: Literal["dark", "light", "no-preference"] = None,
+        reduced_motion: Literal["no-preference", "reduce"] = None,
         accept_downloads: bool = None,
         default_browser_type: str = None,
         proxy: ProxySettings = None,
@@ -8880,6 +9111,9 @@ class Browser(SyncBase):
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. See
             `page.emulate_media()` for more details. Defaults to `'light'`.
+        reduced_motion : Union["no-preference", "reduce", NoneType]
+            Emulates `'prefers-reduced-motion'` media feature, supported values are `'reduce'`, `'no-preference'`. See
+            `page.emulate_media()` for more details. Defaults to `'no-preference'`.
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         proxy : Union[{server: str, bypass: Union[str, NoneType], username: Union[str, NoneType], password: Union[str, NoneType]}, NoneType]
@@ -8933,6 +9167,7 @@ class Browser(SyncBase):
                     isMobile=is_mobile,
                     hasTouch=has_touch,
                     colorScheme=color_scheme,
+                    reducedMotion=reduced_motion,
                     acceptDownloads=accept_downloads,
                     defaultBrowserType=default_browser_type,
                     proxy=proxy,
@@ -8966,6 +9201,7 @@ class Browser(SyncBase):
         is_mobile: bool = None,
         has_touch: bool = None,
         color_scheme: Literal["dark", "light", "no-preference"] = None,
+        reduced_motion: Literal["no-preference", "reduce"] = None,
         accept_downloads: bool = None,
         default_browser_type: str = None,
         proxy: ProxySettings = None,
@@ -9027,6 +9263,9 @@ class Browser(SyncBase):
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. See
             `page.emulate_media()` for more details. Defaults to `'light'`.
+        reduced_motion : Union["no-preference", "reduce", NoneType]
+            Emulates `'prefers-reduced-motion'` media feature, supported values are `'reduce'`, `'no-preference'`. See
+            `page.emulate_media()` for more details. Defaults to `'no-preference'`.
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
         proxy : Union[{server: str, bypass: Union[str, NoneType], username: Union[str, NoneType], password: Union[str, NoneType]}, NoneType]
@@ -9080,6 +9319,7 @@ class Browser(SyncBase):
                     isMobile=is_mobile,
                     hasTouch=has_touch,
                     colorScheme=color_scheme,
+                    reducedMotion=reduced_motion,
                     acceptDownloads=accept_downloads,
                     defaultBrowserType=default_browser_type,
                     proxy=proxy,
@@ -9224,17 +9464,7 @@ class BrowserType(SyncBase):
         self,
         *,
         executable_path: typing.Union[str, pathlib.Path] = None,
-        channel: Literal[
-            "chrome",
-            "chrome-beta",
-            "chrome-canary",
-            "chrome-dev",
-            "firefox-stable",
-            "msedge",
-            "msedge-beta",
-            "msedge-canary",
-            "msedge-dev",
-        ] = None,
+        channel: str = None,
         args: typing.List[str] = None,
         ignore_default_args: typing.Union[bool, typing.List[str]] = None,
         handle_sigint: bool = None,
@@ -9247,6 +9477,7 @@ class BrowserType(SyncBase):
         proxy: ProxySettings = None,
         downloads_path: typing.Union[str, pathlib.Path] = None,
         slow_mo: float = None,
+        traces_dir: typing.Union[str, pathlib.Path] = None,
         chromium_sandbox: bool = None,
         firefox_user_prefs: typing.Optional[
             typing.Dict[str, typing.Union[str, float, bool]]
@@ -9285,8 +9516,9 @@ class BrowserType(SyncBase):
             Path to a browser executable to run instead of the bundled one. If `executablePath` is a relative path, then it is
             resolved relative to the current working directory. Note that Playwright only works with the bundled Chromium, Firefox
             or WebKit, use at your own risk.
-        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "firefox-stable", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
-            Browser distribution channel. Read more about using
+        channel : Union[str, NoneType]
+            Browser distribution channel.  Supported values are "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge",
+            "msedge-beta", "msedge-dev", "msedge-canary". Read more about using
             [Google Chrome and Microsoft Edge](./browsers.md#google-chrome--microsoft-edge).
         args : Union[List[str], NoneType]
             Additional arguments to pass to the browser instance. The list of Chromium flags can be found
@@ -9320,6 +9552,8 @@ class BrowserType(SyncBase):
             deleted when browser is closed.
         slow_mo : Union[float, NoneType]
             Slows down Playwright operations by the specified amount of milliseconds. Useful so that you can see what is going on.
+        traces_dir : Union[pathlib.Path, str, NoneType]
+            If specified, traces are saved into this directory.
         chromium_sandbox : Union[bool, NoneType]
             Enable Chromium sandboxing. Defaults to `false`.
         firefox_user_prefs : Union[Dict[str, Union[bool, float, str]], NoneType]
@@ -9349,6 +9583,7 @@ class BrowserType(SyncBase):
                     proxy=proxy,
                     downloadsPath=downloads_path,
                     slowMo=slow_mo,
+                    tracesDir=traces_dir,
                     chromiumSandbox=chromium_sandbox,
                     firefoxUserPrefs=mapping.to_impl(firefox_user_prefs),
                 ),
@@ -9359,17 +9594,7 @@ class BrowserType(SyncBase):
         self,
         user_data_dir: typing.Union[str, pathlib.Path],
         *,
-        channel: Literal[
-            "chrome",
-            "chrome-beta",
-            "chrome-canary",
-            "chrome-dev",
-            "firefox-stable",
-            "msedge",
-            "msedge-beta",
-            "msedge-canary",
-            "msedge-dev",
-        ] = None,
+        channel: str = None,
         executable_path: typing.Union[str, pathlib.Path] = None,
         args: typing.List[str] = None,
         ignore_default_args: typing.Union[bool, typing.List[str]] = None,
@@ -9401,7 +9626,9 @@ class BrowserType(SyncBase):
         is_mobile: bool = None,
         has_touch: bool = None,
         color_scheme: Literal["dark", "light", "no-preference"] = None,
+        reduced_motion: Literal["no-preference", "reduce"] = None,
         accept_downloads: bool = None,
+        traces_dir: typing.Union[str, pathlib.Path] = None,
         chromium_sandbox: bool = None,
         record_har_path: typing.Union[str, pathlib.Path] = None,
         record_har_omit_content: bool = None,
@@ -9422,13 +9649,14 @@ class BrowserType(SyncBase):
             [Chromium](https://chromium.googlesource.com/chromium/src/+/master/docs/user_data_dir.md#introduction) and
             [Firefox](https://developer.mozilla.org/en-US/docs/Mozilla/Command_Line_Options#User_Profile). Note that Chromium's user
             data directory is the **parent** directory of the "Profile Path" seen at `chrome://version`.
-        channel : Union["chrome", "chrome-beta", "chrome-canary", "chrome-dev", "firefox-stable", "msedge", "msedge-beta", "msedge-canary", "msedge-dev", NoneType]
-            Browser distribution channel. Read more about using
+        channel : Union[str, NoneType]
+            Browser distribution channel.  Supported values are "chrome", "chrome-beta", "chrome-dev", "chrome-canary", "msedge",
+            "msedge-beta", "msedge-dev", "msedge-canary". Read more about using
             [Google Chrome and Microsoft Edge](./browsers.md#google-chrome--microsoft-edge).
         executable_path : Union[pathlib.Path, str, NoneType]
             Path to a browser executable to run instead of the bundled one. If `executablePath` is a relative path, then it is
-            resolved relative to the current working directory. **BEWARE**: Playwright is only guaranteed to work with the bundled
-            Chromium, Firefox or WebKit, use at your own risk.
+            resolved relative to the current working directory. Note that Playwright only works with the bundled Chromium, Firefox
+            or WebKit, use at your own risk.
         args : Union[List[str], NoneType]
             Additional arguments to pass to the browser instance. The list of Chromium flags can be found
             [here](http://peter.sh/experiments/chromium-command-line-switches/).
@@ -9461,7 +9689,6 @@ class BrowserType(SyncBase):
             deleted when browser is closed.
         slow_mo : Union[float, NoneType]
             Slows down Playwright operations by the specified amount of milliseconds. Useful so that you can see what is going on.
-            Defaults to 0.
         viewport : Union[{width: int, height: int}, NoneType]
             Sets a consistent viewport for each page. Defaults to an 1280x720 viewport. `no_viewport` disables the fixed viewport.
         screen : Union[{width: int, height: int}, NoneType]
@@ -9504,10 +9731,15 @@ class BrowserType(SyncBase):
         color_scheme : Union["dark", "light", "no-preference", NoneType]
             Emulates `'prefers-colors-scheme'` media feature, supported values are `'light'`, `'dark'`, `'no-preference'`. See
             `page.emulate_media()` for more details. Defaults to `'light'`.
+        reduced_motion : Union["no-preference", "reduce", NoneType]
+            Emulates `'prefers-reduced-motion'` media feature, supported values are `'reduce'`, `'no-preference'`. See
+            `page.emulate_media()` for more details. Defaults to `'no-preference'`.
         accept_downloads : Union[bool, NoneType]
             Whether to automatically download all the attachments. Defaults to `false` where all the downloads are canceled.
+        traces_dir : Union[pathlib.Path, str, NoneType]
+            If specified, traces are saved into this directory.
         chromium_sandbox : Union[bool, NoneType]
-            Enable Chromium sandboxing. Defaults to `true`.
+            Enable Chromium sandboxing. Defaults to `false`.
         record_har_path : Union[pathlib.Path, str, NoneType]
             Enables [HAR](http://www.softwareishard.com/blog/har-12-spec) recording for all pages into the specified HAR file on the
             filesystem. If not specified, the HAR is not recorded. Make sure to call `browser_context.close()` for the HAR to
@@ -9564,7 +9796,9 @@ class BrowserType(SyncBase):
                     isMobile=is_mobile,
                     hasTouch=has_touch,
                     colorScheme=color_scheme,
+                    reducedMotion=reduced_motion,
                     acceptDownloads=accept_downloads,
+                    tracesDir=traces_dir,
                     chromiumSandbox=chromium_sandbox,
                     recordHarPath=record_har_path,
                     recordHarOmitContent=record_har_omit_content,
@@ -9772,5 +10006,71 @@ class Playwright(SyncBase):
 
         return mapping.from_maybe_impl(self._impl_obj.stop())
 
+    def __getitem__(self, value: str) -> "BrowserType":
+        if value == "chromium":
+            return self.chromium
+        elif value == "firefox":
+            return self.firefox
+        elif value == "webkit":
+            return self.webkit
+        raise ValueError("Invalid browser " + value)
+
 
 mapping.register(PlaywrightImpl, Playwright)
+
+
+class Tracing(SyncBase):
+    def __init__(self, obj: TracingImpl):
+        super().__init__(obj)
+
+    def start(
+        self, *, name: str = None, snapshots: bool = None, screenshots: bool = None
+    ) -> NoneType:
+        """Tracing.start
+
+        Start tracing.
+
+        ```py
+        context.tracing.start(name=\"trace\", screenshots=True, snapshots=True)
+        page.goto(\"https://playwright.dev\")
+        context.tracing.stop()
+        context.tracing.stop(path = \"trace.zip\")
+        ```
+
+        Parameters
+        ----------
+        name : Union[str, NoneType]
+            If specified, the trace is going to be saved into the file with the given name inside the `tracesDir` folder specified
+            in `browser_type.launch()`.
+        snapshots : Union[bool, NoneType]
+            Whether to capture DOM snapshot on every action.
+        screenshots : Union[bool, NoneType]
+            Whether to capture screenshots during tracing. Screenshots are used to build a timeline preview.
+        """
+
+        return mapping.from_maybe_impl(
+            self._sync(
+                "tracing.start",
+                self._impl_obj.start(
+                    name=name, snapshots=snapshots, screenshots=screenshots
+                ),
+            )
+        )
+
+    def stop(self, *, path: typing.Union[str, pathlib.Path] = None) -> NoneType:
+        """Tracing.stop
+
+        Stop tracing.
+
+        Parameters
+        ----------
+        path : Union[pathlib.Path, str, NoneType]
+            Export trace into the file with the given name.
+        """
+
+        return mapping.from_maybe_impl(
+            self._sync("tracing.stop", self._impl_obj.stop(path=path))
+        )
+
+
+mapping.register(TracingImpl, Tracing)

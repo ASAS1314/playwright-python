@@ -16,15 +16,17 @@ import asyncio
 import io
 import json
 import os
+import subprocess
 import sys
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Callable, Dict, Optional
 
 import websockets
 from pyee import AsyncIOEventEmitter
 
 from playwright._impl._api_types import Error
+from playwright._impl._helper import ParsedMessagePayload
 
 
 # Sourced from: https://github.com/pytest-dev/pytest/blob/da01ee0a4bb0af780167ecd228ab3ad249511302/src/_pytest/faulthandler.py#L69-L77
@@ -43,7 +45,7 @@ def _get_stderr_fileno() -> Optional[int]:
 class Transport(ABC):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self.on_message = lambda _: None
+        self.on_message: Callable[[ParsedMessagePayload], None] = lambda _: None
         self.on_error_future: asyncio.Future = loop.create_future()
 
     @abstractmethod
@@ -71,7 +73,7 @@ class Transport(ABC):
             print("\x1b[32mSEND>\x1b[0m", json.dumps(message, indent=2))
         return msg.encode()
 
-    def deserialize_message(self, data: bytes) -> Any:
+    def deserialize_message(self, data: bytes) -> ParsedMessagePayload:
         obj = json.loads(data)
 
         if "DEBUGP" in os.environ:  # pragma: no cover
@@ -97,6 +99,10 @@ class PipeTransport(Transport):
 
     async def run(self) -> None:
         self._stopped_future: asyncio.Future = asyncio.Future()
+        # Hide the command-line window on Windows when using Pythonw.exe
+        creationflags = 0
+        if sys.platform == "win32" and sys.stdout is None:
+            creationflags = subprocess.CREATE_NO_WINDOW
 
         try:
             self._proc = proc = await asyncio.create_subprocess_exec(
@@ -106,6 +112,7 @@ class PipeTransport(Transport):
                 stdout=asyncio.subprocess.PIPE,
                 stderr=_get_stderr_fileno(),
                 limit=32768,
+                creationflags=creationflags,
             )
         except Exception as exc:
             self.on_error_future.set_exception(exc)
@@ -149,6 +156,7 @@ class WebSocketTransport(AsyncIOEventEmitter, Transport):
         loop: asyncio.AbstractEventLoop,
         ws_endpoint: str,
         headers: Dict[str, str] = None,
+        slow_mo: float = None,
     ) -> None:
         super().__init__(loop)
         Transport.__init__(self, loop)
@@ -156,9 +164,11 @@ class WebSocketTransport(AsyncIOEventEmitter, Transport):
         self._stopped = False
         self.ws_endpoint = ws_endpoint
         self.headers = headers
+        self.slow_mo = slow_mo
 
     def request_stop(self) -> None:
         self._stopped = True
+        self.emit("close")
         self._loop.create_task(self._connection.close())
 
     def dispose(self) -> None:
@@ -179,6 +189,8 @@ class WebSocketTransport(AsyncIOEventEmitter, Transport):
         while not self._stopped:
             try:
                 message = await self._connection.recv()
+                if self.slow_mo is not None:
+                    await asyncio.sleep(self.slow_mo / 1000)
                 if self._stopped:
                     self.on_error_future.set_exception(
                         Error("Playwright connection closed")
@@ -186,7 +198,10 @@ class WebSocketTransport(AsyncIOEventEmitter, Transport):
                     break
                 obj = self.deserialize_message(message)
                 self.on_message(obj)
-            except websockets.exceptions.ConnectionClosed:
+            except (
+                websockets.exceptions.ConnectionClosed,
+                websockets.exceptions.ConnectionClosedError,
+            ):
                 if not self._stopped:
                     self.emit("close")
                 self.on_error_future.set_exception(

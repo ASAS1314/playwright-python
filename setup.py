@@ -28,7 +28,7 @@ except ImportError:
     InWheel = None
 from wheel.bdist_wheel import bdist_wheel as BDistWheelCommand
 
-driver_version = "1.11.0-1620331022000"
+driver_version = "1.13.0-next-1625158334000"
 
 
 def extractall(zip: zipfile.ZipFile, path: str) -> None:
@@ -92,7 +92,7 @@ class PlaywrightBDistWheelCommand(BDistWheelCommand):
             if platform == "mac":
                 wheel = "macosx_10_13_x86_64.whl"
             if platform == "linux":
-                wheel = "manylinux_2_27_x86_64.whl"
+                wheel = "manylinux1_x86_64.whl"
             if platform == "win32":
                 wheel = "win32.whl"
             if platform == "win32_x64":
@@ -141,7 +141,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "websockets>=8.1",
-        "greenlet>=0.4",
+        "greenlet>=1.0.0",
         "pyee>=8.0.1",
         "typing-extensions;python_version<='3.8'",
     ],

@@ -12,10 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import time
+
 import pytest
 
 from playwright.sync_api import BrowserType, Error
 from tests.server import Server
+
+
+def test_browser_type_connect_slow_mo(
+    server: Server, browser_type: BrowserType, launch_server
+):
+    remote_server = launch_server()
+    browser = browser_type.connect(remote_server.ws_endpoint, slow_mo=100)
+    browser_context = browser.new_context()
+    t1 = time.monotonic()
+    page = browser_context.new_page()
+    assert page.evaluate("11 * 11") == 121
+    assert (time.monotonic() - t1) >= 0.2
+    page.goto(server.EMPTY_PAGE)
+    browser.close()
 
 
 def test_browser_type_connect_should_be_able_to_reconnect_to_a_browser(
@@ -144,6 +160,26 @@ def test_browser_type_connect_should_forward_close_events_to_pages(
     browser.close()
     assert events == ["page::close", "context::close", "browser::disconnected"]
     remote.kill()
+    assert events == ["page::close", "context::close", "browser::disconnected"]
+
+
+def test_browser_type_connect_should_forward_close_events_on_remote_kill(
+    browser_type: BrowserType, launch_server
+):
+    # Launch another server to not affect other tests.
+    remote = launch_server()
+
+    browser = browser_type.connect(remote.ws_endpoint)
+    context = browser.new_context()
+    page = context.new_page()
+
+    events = []
+    browser.on("disconnected", lambda: events.append("browser::disconnected"))
+    context.on("close", lambda: events.append("context::close"))
+    page.on("close", lambda: events.append("page::close"))
+    remote.kill()
+    with pytest.raises(Error):
+        page.title()
     assert events == ["page::close", "context::close", "browser::disconnected"]
 
 

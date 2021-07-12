@@ -53,6 +53,7 @@ async def test_should_report_downloads_with_accept_downloads_false(page: Page, s
     async with page.expect_download() as download_info:
         await page.click("a")
     download = await download_info.value
+    assert download.page is page
     assert download.url == f"{server.PREFIX}/downloadWithFilename"
     assert download.suggested_filename == "file.txt"
     assert (
@@ -287,9 +288,6 @@ async def test_should_report_alt_click_downloads(browser, server):
 
 
 async def test_should_report_new_window_downloads(browser, server):
-    # TODO: - the test fails in headful Chromium as the popup page gets closed along
-    # with the session before download completed event arrives.
-    # - WebKit doesn't close the popup page
     page = await browser.new_page(accept_downloads=True)
     await page.set_content(
         f'<a target=_blank href="{server.PREFIX}/download">download</a>'

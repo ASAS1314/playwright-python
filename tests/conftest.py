@@ -219,7 +219,7 @@ class RemoteServer:
             node_executable = driver_dir / "node"
         cli_js = driver_dir / "package" / "lib" / "cli" / "cli.js"
         tmpfile.write_text(json.dumps(launch_server_options))
-        self.process = subprocess.Popen(  # type: ignore
+        self.process = subprocess.Popen(
             [
                 str(node_executable),
                 str(cli_js),
@@ -233,15 +233,13 @@ class RemoteServer:
         )
         assert self.process.stdout
         self.ws_endpoint = self.process.stdout.readline().decode().strip()
+        self.process.stdout.close()
 
     def kill(self):
         # Send the signal to all the process groups
         if self.process.poll() is not None:
             return
-        if sys.platform == "win32":
-            subprocess.check_call(["taskkill", "/F", "/PID", str(self.process.pid)])
-        else:
-            self.process.kill()
+        self.process.kill()
         self.process.wait()
 
 
